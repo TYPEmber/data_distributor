@@ -1,6 +1,7 @@
 use data_distributor::*;
 #[tokio::main]
 async fn main() {
+    println!{"hello,here is a test"};
     
     let stop_sender = crate::initial().await;
     recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
