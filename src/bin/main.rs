@@ -1,6 +1,52 @@
 use data_distributor::*;
+
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+struct Pair {
+    /// local addr to listen
+    //#[structopt(short, long)]
+    local_addr: std::net::SocketAddr,
+
+    /// remote addrs to send
+    //#[structopt(short, long)]
+    remote_addrs: Vec<std::net::SocketAddr>,
+}
+impl std::str::FromStr for Pair {
+    type Err = std::net::AddrParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let addrs: Vec<&str> = s.split(' ').filter(|x| x.len() >= 9).collect();
+
+        let local = addrs[0].parse::<std::net::SocketAddr>()?;
+        let mut remotes = vec![];
+        for item in addrs[1..].into_iter() {
+            remotes.push(item.parse::<std::net::SocketAddr>()?);
+        }
+
+        Ok(Pair {
+            local_addr: local,
+            remote_addrs: remotes,
+        })
+    }
+}
+
+#[derive(StructOpt, Debug)]
+struct Opt {
+    #[structopt(short, long, default_value = "1048576")]
+    recv_buffer: usize, 
+    #[structopt(short, long, default_value = "1048576")]
+    send_buffer: usize,
+    #[structopt(short, long)]
+    add: Vec<Pair>,
+}
+
 #[tokio::main]
 async fn main() {
+    let cmd = Opt::from_args();
+
+    println!("{:?}", cmd);
+
     let stop_sender = crate::initial().await;
     recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
     send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 5e8).await;
