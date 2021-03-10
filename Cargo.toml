@@ -19,3 +19,4 @@ tokio = { version = "*", features = ["full"]}
 socket2 = "*"
 crossbeam = "*"
 structopt = "*"
+log = "*"

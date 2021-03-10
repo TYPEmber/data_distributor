@@ -1,5 +1,6 @@
 use socket2::{Domain, SockAddr, Socket, Type};
 
+use log::{debug, error, info, trace, warn};
 use std::sync::{Arc, Mutex};
 
 #[cfg(test)]
@@ -10,7 +11,11 @@ mod tests {
     fn it_works() {}
 }
 
+mod logger;
+
 pub async fn initial() -> tokio::sync::broadcast::Sender<()> {
+    crate::logger::init();
+
     let addrs = vec![
         "127.0.0.1:19208".parse().unwrap(),
         "127.0.0.1:19210".parse().unwrap(),
@@ -18,6 +23,8 @@ pub async fn initial() -> tokio::sync::broadcast::Sender<()> {
         // "192.168.200.3:19210".parse().unwrap(),
         //"10.0.0.1:19209".parse().unwrap(),
     ];
+
+    info!("{:?}", addrs);
 
     let addrs_2 = vec![
         "127.0.0.1:19211".parse().unwrap(),
@@ -113,16 +120,17 @@ impl Distributor {
             tokio::select! {
                 _ = async  {
                         loop {
-                            //println!("hhh");
                         if let Ok((len, _)) = self.receiver.recv_from(&mut buf[..]).await{
                             self.recv_speed_acc.fetch_add(len, Ordering::SeqCst);
                             let data = Arc::new(buf[..len].to_vec());
                             for remote in &self.remote {
-                                sender_map
+                                if let Err(e) = sender_map
                                     .get(&remote.addr)
                                     .unwrap()
                                     .send(SendRequest::new(remote.clone(), data.clone()))
-                                    .unwrap();
+                                    {
+                                        error!("[{}]", e);
+                                    }
                             }
                         }
 
@@ -135,14 +143,14 @@ impl Distributor {
                     interval.tick().await;
                     recv_speed.store(recv_speed_acc.load(Ordering::SeqCst), Ordering::SeqCst);
                     recv_speed_acc.store(0, Ordering::SeqCst);
-                    println!("recv: {} bps", 8 * recv_speed.load(Ordering::SeqCst));
+                    info!("[SPEED][{}][IN] {} bps", local_addr, 8 * recv_speed.load(Ordering::SeqCst));
                     for remote in &remotes {
                         remote
                             .speed
                             .store(remote.speed_acc.load(Ordering::SeqCst), Ordering::SeqCst);
                         remote.speed_acc.store(0, Ordering::SeqCst);
-                        println!(
-                            "{:?}: {} bps",
+                        info!(
+                            "[SPEED][{}][OUT] {} bps",
                             remote.addr,
                             8 * remote.speed.load(Ordering::SeqCst)
                         );
@@ -248,7 +256,7 @@ pub fn generate_sender_thread(
                     }
                 }
             } => {},
-            _ = async {stop_for_send_thread.recv().await;} =>{}
+            _ = stop_for_send_thread.recv() =>{}
         }
     });
 

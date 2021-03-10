@@ -2,6 +2,8 @@ use data_distributor::*;
 
 use structopt::StructOpt;
 
+use log::{trace, debug, info, warn, error};
+
 #[derive(StructOpt, Debug)]
 struct Pair {
     /// local addr to listen
@@ -34,7 +36,7 @@ impl std::str::FromStr for Pair {
 #[derive(StructOpt, Debug)]
 struct Opt {
     #[structopt(short, long, default_value = "1048576")]
-    recv_buffer: usize, 
+    recv_buffer: usize,
     #[structopt(short, long, default_value = "1048576")]
     send_buffer: usize,
     #[structopt(short, long)]
@@ -48,8 +50,8 @@ async fn main() {
     println!("{:?}", cmd);
 
     let stop_sender = crate::initial().await;
-    recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
-    send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 5e8).await;
+    recv_pkg("127.0.0.1:19208".parse().unwrap(), 10_000_0).await;
+    send_pkg("127.0.0.1:5503".parse().unwrap(), 10_000_0, 5e8).await;
 
     stop_sender.send(());
 
