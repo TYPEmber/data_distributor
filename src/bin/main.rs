@@ -44,6 +44,10 @@ struct Opt {
 
 #[tokio::main]
 async fn main() {
+
+
+    println!("here is the test setence ");
+    
     let cmd = Opt::from_args();
 
     println!("{:?}", cmd);
