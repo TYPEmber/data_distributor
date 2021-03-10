@@ -157,7 +157,7 @@ impl Distributor {
                     }
                 }
             } => {},
-            _ = stop_broadcast_recv.recv() => { println!("{} is closed!", local_addr) },
+            _ = stop_broadcast_recv.recv() => { warn!("[CLOSED][{}]", local_addr) },
             };
         });
     }
@@ -183,7 +183,7 @@ pub fn generate_sender_map(
         }
     }
 
-    println!("{:?}", local_ips);
+    //println!("{:?}", local_ips);
 
     Arc::new(map)
 }
