@@ -1,52 +1,57 @@
 use data_distributor::*;
 
-#[macro_use]
-extern crate structopt;
 
-//use std::path::PathBuf;
 use structopt::StructOpt;
 
+#[derive(StructOpt, Debug)]
+struct Pair {
+    /// local addr to listen
+    //#[structopt(short, long)]
+    local_addr: std::net::SocketAddr,
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "distributor_command_line", about = "An implementation of command line for the distributor ")]
-struct Opt {
-    /// Activate debug mode
-   // #[structopt(short = "d", long = "debug")]
-    //debug: bool,
-    /// Set receive_buffer_size
-    #[structopt(short = "r", long = "receive", default_value = "1024")]
-    receive_buff: usize,
-    /// Input file
-    //#[structopt(parse(from_os_str))]
-    //input: PathBuf,
-    /// Output file, stdout if not present
-    //#[structopt(parse(from_os_str))]
-    //output: Option<PathBuf>,
-    //set the send_buffer_size
-    #[structopt(short = "s", long = "send", default_value = "2048")]
-    send_buff: usize,
-    #[structopt(short = "i", long = "remote_address", default_value="127.0.0.1:19208 127.0.0.1:19210 192.168.200.3:19209 127.0.0.1:19211 127.0.0.1:19212 192.168.200.3:19201")]
-    remote_address: String,
-    #[structopt(short = "d", long = "distributor_address", default_value="127.0.0.1:5503 127.0.0.1:19210")]
-    distributor_address: String,
-    #[structopt(short = "m", long = "map", default_value="3 3")]
-    map:String,
+    /// remote addrs to send
+    //#[structopt(short, long)]
+    remote_addrs: Vec<std::net::SocketAddr>,
+}
+impl std::str::FromStr for Pair {
+    type Err = std::net::AddrParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let addrs: Vec<&str> = s.split(' ').filter(|x| x.len() >= 9).collect();
+
+        let local = addrs[0].parse::<std::net::SocketAddr>()?;
+        let mut remotes = vec![];
+        for item in addrs[1..].into_iter() {
+            remotes.push(item.parse::<std::net::SocketAddr>()?);
+        }
+
+        Ok(Pair {
+            local_addr: local,
+            remote_addrs: remotes,
+        })
+    }
 }
 
-
-
+#[derive(StructOpt, Debug)]
+struct Opt {
+    #[structopt(short, long, default_value = "1048576")]
+    recv_buffer: usize, 
+    #[structopt(short, long, default_value = "1048576")]
+    send_buffer: usize,
+    #[structopt(short, long)]
+    add: Vec<Pair>,
+}
 
 #[tokio::main]
 async fn main() {
-   
-    let opt = Opt::from_args();
-    let r_id: Vec<std::net::SocketAddr> = opt.remote_address.trim().split(' ').map(|x| x.parse().unwrap()).collect();
-    let d_id: Vec<std::net::SocketAddr> = opt.distributor_address.trim().split(' ').map(|x| x.parse().unwrap()).collect();
-    let num_split: Vec<usize> = opt.map.trim().split(' ').map(|x| x.parse().unwrap()).collect();
-    
-    let stop_sender = crate::initial(opt.send_buff, opt.receive_buff,r_id,d_id,num_split).await;         // set the socket size  
-    recv_pkg("127.0.0.1:19208".parse().unwrap(), 100).await;
-    send_pkg("127.0.0.1:5503".parse().unwrap(), 100, 5e8).await;    // set the count of package and expected speed rate  
+    let cmd = Opt::from_args();
+
+    println!("{:?}", cmd);
+
+    let stop_sender = crate::initial().await;
+    recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
+    send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 5e8).await;
+
 
     stop_sender.send(());
 
