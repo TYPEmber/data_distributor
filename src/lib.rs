@@ -10,60 +10,34 @@ mod tests {
     fn it_works() {}
 }
 
-pub async fn initial(
-recv_buff_size:usize,
-send_buff_size:usize,   
-r_address: Vec<std::net::SocketAddr>,
-d_address: Vec<std::net::SocketAddr>,
-n_split: Vec<usize>,
-) -> tokio::sync::broadcast::Sender<()> {
-   // let addrs = vec![
-     //   "127.0.0.1:19208".parse().unwrap(),
-       // "127.0.0.1:19210".parse().unwrap(),
+pub async fn initial() -> tokio::sync::broadcast::Sender<()> {
+    let addrs = vec![
+        "127.0.0.1:19208".parse().unwrap(),
+        "127.0.0.1:19210".parse().unwrap(),
         //"192.168.200.3:19209".parse().unwrap(),
         // "192.168.200.3:19210".parse().unwrap(),
         //"10.0.0.1:19209".parse().unwrap(),
-    //];
+    ];
 
-    //let addrs_2 = vec![
-      //  "127.0.0.1:19211".parse().unwrap(),
-        //"127.0.0.1:19212".parse().unwrap(),
+    let addrs_2 = vec![
+        "127.0.0.1:19211".parse().unwrap(),
+        "127.0.0.1:19212".parse().unwrap(),
         //"192.168.200.3:19201".parse().unwrap(),
         // "192.168.200.3:19210".parse().unwrap(),
         //"10.0.0.1:19209".parse().unwrap(),
-    //];
+    ];
 
     // let addrs = Arc::new(addrs);
     // let socket = Arc::new(socket);
     // let sender = Arc::new(sender);
     // let mut buf = Box::new([0u8; 65535]);
     // let mut count = 0usize;
-    let len_num_split=n_split.len();
-    let mut start:usize=0;
-    let mut num= Vec::new();
-    for index in 0..len_num_split{
-       let  end=start+n_split[index];
-       let  temp=&r_address[start..end];
-      
-       num.push(temp);
-      
-       start=end;
-       }
-    
-    println!("the split remote address are {:?}", num[0]);
-    let (tx, mut rx) = tokio::sync::broadcast::channel(1); 
 
-    let num_distributor=d_address.len();
-    //println!{"the num of distributor is {}",num_distributor};
-    let mut dis_vec=Vec::new();
-    for index in 0..num_distributor{
-    let mut dis_obj = Distributor::new(d_address[index], num[index].clone().to_vec(), tx.clone(),recv_buff_size,send_buff_size);
-    //let mut dis_obj_2 = Distributor::new("127.0.0.1:19210".parse().unwrap(), r_address.clone(), tx.clone(),recv_buff_size,send_buff_size);
-    //let mut dis_vec = vec![dis_obj, dis_obj_2];
-    dis_vec.push(dis_obj);
+    let (tx, mut rx) = tokio::sync::broadcast::channel(1);
 
-    }
-
+    let mut dis_obj = Distributor::new("127.0.0.1:5503".parse().unwrap(), addrs, tx.clone());
+    let mut dis_obj_2 = Distributor::new("127.0.0.1:19210".parse().unwrap(), addrs_2, tx.clone());
+    let mut dis_vec = vec![dis_obj, dis_obj_2];
     let map = generate_sender_map(&mut dis_vec, tx.clone());
 
     for dis_obj in dis_vec.drain(..) {
@@ -82,7 +56,7 @@ pub fn generate_socket(
     sender.bind(&SockAddr::from(bind_addr)).unwrap();
     sender.set_nonblocking(true).unwrap();
     sender.set_recv_buffer_size(recv_buff_size).unwrap();
-    sender.set_send_buffer_size(send_buff_size).unwrap();    // parameter 3 
+    sender.set_send_buffer_size(send_buff_size).unwrap();
     let sender = sender.into_udp_socket();
     tokio::net::UdpSocket::from_std(sender).unwrap()
 }
@@ -94,7 +68,6 @@ pub struct Distributor {
     pub recv_speed_acc: Arc<AtomicUsize>,
     pub stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
     pub remote: Vec<Arc<RemoteInfo>>,
-    
 }
 
 impl Distributor {
@@ -102,11 +75,9 @@ impl Distributor {
         listen_addr: std::net::SocketAddr,
         remote_addrs: Vec<std::net::SocketAddr>,
         stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
-        recv_buff_size1: usize,
-        send_buff_size1: usize
     ) -> Self {
         Self {
-            receiver: generate_socket(listen_addr, recv_buff_size1, send_buff_size1), // parameter 4 
+            receiver: generate_socket(listen_addr, 1024 * 1024, 1024),
             recv_speed: Arc::new(AtomicUsize::new(0)),
             recv_speed_acc: Arc::new(AtomicUsize::new(0)),
             remote: remote_addrs
@@ -120,7 +91,6 @@ impl Distributor {
                 })
                 .collect(),
             stop_broadcast_sender: stop_broadcast_sender,
-            
         }
     }
 
@@ -136,14 +106,14 @@ impl Distributor {
         let local_addr = self.receiver.local_addr().unwrap();
 
         let remotes = self.remote.clone();
-        let mut buf = Box::new([0u8; 636]);    //parameter 5 
+        let mut buf = Box::new([0u8; 65536]);
 
         // receive thread
         tokio::spawn(async move {
             tokio::select! {
                 _ = async  {
                         loop {
-                            
+                            //println!("hhh");
                         if let Ok((len, _)) = self.receiver.recv_from(&mut buf[..]).await{
                             self.recv_speed_acc.fetch_add(len, Ordering::SeqCst);
                             let data = Arc::new(buf[..len].to_vec());
@@ -232,7 +202,7 @@ pub fn generate_sender_thread(
     mut stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
 ) -> crossbeam::channel::Sender<SendRequest> {
     let (tx, rx) = crossbeam::channel::unbounded::<SendRequest>();
-    let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 3 * 1024);   // binding local address is another option 
+    let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 3 * 1024 * 1024);
 
     let rrx = rx.clone();
 
