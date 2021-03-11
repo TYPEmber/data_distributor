@@ -133,6 +133,7 @@ name = "data_distributor"
 version = "0.1.0"
 dependencies = [
  "crossbeam",
+ "lazy_static",
  "log",
  "socket2",
  "structopt",
