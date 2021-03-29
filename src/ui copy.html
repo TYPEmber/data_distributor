@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>Vue 测试实例 - 菜鸟教程(runoob.com)</title>
+	<script src="https://unpkg.com/vue/dist/vue.js"></script>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+	<div id="app-5">
+		<p>{{ message }}</p>
+		<p>{{ speed }}</p>
+		<input v-model="message">
+		<button v-on:click="get_speed_func">get speed</button>
+	</div>
+
+	<script>
+		var app5 = new Vue({
+			el: '#app-5',
+			data: {
+				message: 'test-success',
+				speed: '0 bps'
+			},
+			methods: {
+				get_speed_func: function () {
+					this.axios.get(message).then((response) => {
+						this.message = response.data
+					})
+					
+				}
+			}
+		})
+	</script>
+</body>
+
+</html>

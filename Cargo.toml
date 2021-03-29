@@ -19,5 +19,9 @@ tokio = { version = "*", features = ["full"]}
 socket2 = "*"
 crossbeam = "*"
 structopt = "*"
-log = "*"
+log = { version = "*", features = ["kv_unstable"]}
 lazy_static = "*"
+warp = "*"
+regex = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"

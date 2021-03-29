@@ -143,14 +143,14 @@ impl Distributor {
                     interval.tick().await;
                     recv_speed.store(recv_speed_acc.load(Ordering::SeqCst), Ordering::SeqCst);
                     recv_speed_acc.store(0, Ordering::SeqCst);
-                    info!("[SPEED][{}][IN] {} bps", local_addr, 8 * recv_speed.load(Ordering::SeqCst));
+                    info!("[SPEED][{}] [{}] bps [IN]", local_addr, 8 * recv_speed.load(Ordering::SeqCst));
                     for remote in &remotes {
                         remote
                             .speed
                             .store(remote.speed_acc.load(Ordering::SeqCst), Ordering::SeqCst);
                         remote.speed_acc.store(0, Ordering::SeqCst);
                         info!(
-                            "[SPEED][{}][OUT] {} bps",
+                            "[SPEED][{}] [{}] bps [OUT]",
                             remote.addr,
                             8 * remote.speed.load(Ordering::SeqCst)
                         );
