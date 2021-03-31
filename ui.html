@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>Distributor</title>
+	<script src="https://unpkg.com/vue/dist/vue.js"></script>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+	<div id="app-5">
+		<p>{{ message }}</p>
+		<p>{{ speed }}</p>
+		<p>{{ group }}</p>
+		<input v-model="message">
+		<button v-on:click="get_speed_func">get speed</button>
+		<button v-on:click="get_group_func">get group</button>
+		<button v-on:click="stop_func">stop</button>
+		<button v-on:click="start_func">start</button>
+	</div>
+
+	<script>
+		var app5 = new Vue({
+			el: '#app-5',
+			data: {
+				message: '127.0.0.1:5503',
+				group: '',
+				speed: '0 bps'
+			},
+			methods: {
+				get_speed_func: function () {
+					axios.post('/api/speed/get', { vec: [this.message, '127.0.0.1:19208'] }).then((response) => {
+						this.speed = response.data
+					})
+				},
+				get_group_func: function () {
+					axios.post('/api/group/get', { }).then((response) => {
+						this.group = response.data
+					})
+
+				},
+				stop_func: function () {
+					axios.post('/api/ctrl/stop', { }).then((response) => {
+						this.group = response.data
+					})
+				},
+				start_func: function () {
+					axios.post('/api/ctrl/start', { }).then((response) => {
+						this.group = response.data
+					})
+				}
+			},
+		})
+	</script>
+</body>
+
+</html>

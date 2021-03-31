@@ -2,10 +2,10 @@ use data_distributor::*;
 
 use structopt::StructOpt;
 
-use log::{trace, debug, info, warn, error};
+use log::{debug, error, info, trace, warn};
 
 #[derive(StructOpt, Debug)]
-struct Pair {
+pub struct Pair {
     /// local addr to listen
     //#[structopt(short, long)]
     local_addr: std::net::SocketAddr,
@@ -35,25 +35,56 @@ impl std::str::FromStr for Pair {
 
 #[derive(StructOpt, Debug)]
 struct Opt {
-    #[structopt(short, long, default_value = "1048576")]
+    #[structopt(short, long, default_value = "4194304")]
     recv_buffer: usize,
-    #[structopt(short, long, default_value = "1048576")]
+    #[structopt(short, long, default_value = "4194304")]
     send_buffer: usize,
     #[structopt(short, long)]
     add: Vec<Pair>,
+    #[structopt(long)]
+    save: bool,
+    #[structopt(long)]
+    para: Option<String>,
 }
 
+// cargo run --bin main -- -a "127.0.0.1:5503 -> 127.0.0.1:19208 127.0.0.1:19210" -a "127.0.0.1:5504 -> 127.0.0.1:19211 127.0.0.1:19212" -save --release
 #[tokio::main]
 async fn main() {
+    let stop_trigger = crate::logger::init().unwrap();
+
     let cmd = Opt::from_args();
 
-    println!("{:?}", cmd);
+    let (dis_vec, group) = if let Some(para_path) = cmd.para {
+        let group = params::Group::load(&para_path[..]);
 
-    let stop_sender = crate::initial().await;
-    recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
-    send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 5e8).await;
+        (group.get_flat_enable(), group)
+    } else {
+        let dis_vec = cmd
+            .add
+            .into_iter()
+            .map(|p| (p.local_addr, p.remote_addrs))
+            .collect();
+        let group = params::Group::from_flat_enable(&dis_vec);
 
-    stop_sender.send(());
+        if cmd.save {
+            group.save("params.json");
+        }
+
+        (dis_vec, group)
+    };
+
+    info!("GROUP {}", group.get_json());
+
+    match crate::initial(dis_vec, cmd.recv_buffer, cmd.send_buffer, stop_trigger) {
+        Ok((dis_vec, sender_map)) => {
+            crate::run(dis_vec, sender_map).await;
+            // recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
+            // send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 5e8).await;
+
+            //stop_sender.send(());
+        }
+        Err(e) => {}
+    }
 
     loop {
         tokio::time::sleep(tokio::time::Duration::from_millis(1_000)).await;
@@ -65,7 +96,7 @@ async fn test_socket_send_limited() {
     let loop_times = 200_000_0;
 
     let one_socket_cost = tokio::spawn(async move {
-        let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 1024 * 1024 * 10);
+        let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 1024 * 1024 * 10).unwrap();
         let addr: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
         let data = [0u8; 1350];
 
@@ -84,7 +115,7 @@ async fn test_socket_send_limited() {
 
     let mut tasks = vec![];
     for k in 0..multi_count {
-        let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 1024 * 1024 * 10);
+        let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 1024 * 1024 * 10).unwrap();
         let addr: std::net::SocketAddr = "127.0.0.1:12345".parse().unwrap();
         let data = [0u8; 1350];
 
@@ -120,7 +151,7 @@ use socket2::{Domain, SockAddr, Socket, Type};
 
 async fn send_pkg(addr: std::net::SocketAddr, pkg_count: usize, speed_rate: f64) {
     let any_addr: std::net::SocketAddr = "0.0.0.0:0".parse().unwrap();
-    let mut socket = crate::generate_socket(any_addr, 4096, 4096 * 1024);
+    let mut socket = crate::generate_socket(any_addr, 4096, 4096 * 1024).unwrap();
 
     let mut time = std::time::SystemTime::now();
     let mut last_print_time = 0usize;
@@ -169,7 +200,7 @@ async fn send_pkg(addr: std::net::SocketAddr, pkg_count: usize, speed_rate: f64)
 }
 
 async fn recv_pkg(addr: std::net::SocketAddr, pkg_count: usize) {
-    let mut socket = crate::generate_socket(addr, 4096 * 4096 * 10, 4096);
+    let mut socket = crate::generate_socket(addr, 4096 * 4096 * 10, 4096).unwrap();
 
     let mut recv_pkg_count = 0usize;
 

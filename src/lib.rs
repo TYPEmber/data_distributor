@@ -11,61 +11,55 @@ mod tests {
     fn it_works() {}
 }
 
-mod logger;
+pub mod logger;
+pub mod params;
 
-pub async fn initial() -> tokio::sync::broadcast::Sender<()> {
-    crate::logger::init();
+pub fn initial(
+    distributors: Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
+    recv_buff_size: usize,
+    send_buff_size: usize,
+    stop_trigger: tokio::sync::broadcast::Sender<()>
+) -> Result<
+    (
+        Vec<Distributor>,
+        Arc<HashMap<std::net::SocketAddr, crossbeam::channel::Sender<SendRequest>>>,
+    ),
+    std::io::Error,
+> {
+    let mut dis_vec = vec![];
 
-    let addrs = vec![
-        "127.0.0.1:19208".parse().unwrap(),
-        "127.0.0.1:19210".parse().unwrap(),
-        //"192.168.200.3:19209".parse().unwrap(),
-        // "192.168.200.3:19210".parse().unwrap(),
-        //"10.0.0.1:19209".parse().unwrap(),
-    ];
-
-    info!("{:?}", addrs);
-
-    let addrs_2 = vec![
-        "127.0.0.1:19211".parse().unwrap(),
-        "127.0.0.1:19212".parse().unwrap(),
-        //"192.168.200.3:19201".parse().unwrap(),
-        // "192.168.200.3:19210".parse().unwrap(),
-        //"10.0.0.1:19209".parse().unwrap(),
-    ];
-
-    // let addrs = Arc::new(addrs);
-    // let socket = Arc::new(socket);
-    // let sender = Arc::new(sender);
-    // let mut buf = Box::new([0u8; 65535]);
-    // let mut count = 0usize;
-
-    let (tx, mut rx) = tokio::sync::broadcast::channel(1);
-
-    let mut dis_obj = Distributor::new("127.0.0.1:5503".parse().unwrap(), addrs, tx.clone());
-    let mut dis_obj_2 = Distributor::new("127.0.0.1:19210".parse().unwrap(), addrs_2, tx.clone());
-    let mut dis_vec = vec![dis_obj, dis_obj_2];
-    let map = generate_sender_map(&mut dis_vec, tx.clone());
-
-    for dis_obj in dis_vec.drain(..) {
-        dis_obj.run(map.clone()).await;
+    for (local_addr, remote_addrs) in distributors.into_iter() {
+        dis_vec.push(Distributor::new(local_addr, remote_addrs, stop_trigger.clone())?);
     }
 
-    tx
+    let dis_vec = dis_vec;
+
+    let map = generate_sender_map(&dis_vec, stop_trigger.clone())?;
+
+    Ok((dis_vec, map))
+}
+
+pub async fn run(
+    dis_vec: Vec<Distributor>,
+    map: Arc<HashMap<std::net::SocketAddr, crossbeam::channel::Sender<SendRequest>>>,
+) {
+    for dis_obj in dis_vec.into_iter() {
+        dis_obj.run(map.clone()).await;
+    }
 }
 
 pub fn generate_socket(
     bind_addr: std::net::SocketAddr,
     recv_buff_size: usize,
     send_buff_size: usize,
-) -> tokio::net::UdpSocket {
-    let sender = Socket::new(Domain::ipv4(), Type::dgram(), None).unwrap();
-    sender.bind(&SockAddr::from(bind_addr)).unwrap();
+) -> Result<tokio::net::UdpSocket, std::io::Error> {
+    let sender = Socket::new(Domain::ipv4(), Type::dgram(), None)?;
+    sender.bind(&SockAddr::from(bind_addr))?;
     sender.set_nonblocking(true).unwrap();
-    sender.set_recv_buffer_size(recv_buff_size).unwrap();
-    sender.set_send_buffer_size(send_buff_size).unwrap();
+    sender.set_recv_buffer_size(recv_buff_size)?;
+    sender.set_send_buffer_size(send_buff_size)?;
     let sender = sender.into_udp_socket();
-    tokio::net::UdpSocket::from_std(sender).unwrap()
+    tokio::net::UdpSocket::from_std(sender)
 }
 use std::collections::{HashMap, HashSet};
 
@@ -82,9 +76,9 @@ impl Distributor {
         listen_addr: std::net::SocketAddr,
         remote_addrs: Vec<std::net::SocketAddr>,
         stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
-    ) -> Self {
-        Self {
-            receiver: generate_socket(listen_addr, 1024 * 1024, 1024),
+    ) -> Result<Self, std::io::Error> {
+        Ok(Self {
+            receiver: generate_socket(listen_addr, 1024 * 1024, 1024)?,
             recv_speed: Arc::new(AtomicUsize::new(0)),
             recv_speed_acc: Arc::new(AtomicUsize::new(0)),
             remote: remote_addrs
@@ -98,7 +92,7 @@ impl Distributor {
                 })
                 .collect(),
             stop_broadcast_sender: stop_broadcast_sender,
-        }
+        })
     }
 
     pub async fn run(
@@ -143,14 +137,14 @@ impl Distributor {
                     interval.tick().await;
                     recv_speed.store(recv_speed_acc.load(Ordering::SeqCst), Ordering::SeqCst);
                     recv_speed_acc.store(0, Ordering::SeqCst);
-                    info!("[SPEED][{}] [{}] bps [IN]", local_addr, 8 * recv_speed.load(Ordering::SeqCst));
+                    info!("SPEED IN {} {}  bps", local_addr, 8 * recv_speed.load(Ordering::SeqCst));
                     for remote in &remotes {
                         remote
                             .speed
                             .store(remote.speed_acc.load(Ordering::SeqCst), Ordering::SeqCst);
                         remote.speed_acc.store(0, Ordering::SeqCst);
                         info!(
-                            "[SPEED][{}] [{}] bps [OUT]",
+                            "SPEED OUT {} {} bps",
                             remote.addr,
                             8 * remote.speed.load(Ordering::SeqCst)
                         );
@@ -164,20 +158,26 @@ impl Distributor {
 }
 
 pub fn generate_sender_map(
-    distributors: &mut Vec<Distributor>,
+    distributors: &Vec<Distributor>,
     stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
-) -> Arc<HashMap<std::net::SocketAddr, crossbeam::channel::Sender<SendRequest>>> {
+) -> Result<
+    Arc<HashMap<std::net::SocketAddr, crossbeam::channel::Sender<SendRequest>>>,
+    std::io::Error,
+> {
     let mut map = HashMap::new();
     let mut local_ips = HashMap::new();
     // It will choose the same sender port for every net card
-    let mut socket = std::net::UdpSocket::bind("0.0.0.0:0").unwrap();
+    let mut socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
     for item in distributors {
-        for remote in &mut item.remote {
-            socket.connect(remote.addr).unwrap();
-            let local = socket.local_addr().unwrap();
+        for remote in &item.remote {
+            socket.connect(remote.addr)?;
+            let local = socket.local_addr()?;
 
             if !local_ips.contains_key(&local) {
-                local_ips.insert(local, generate_sender_thread(stop_broadcast_sender.clone()));
+                local_ips.insert(
+                    local,
+                    generate_sender_thread(stop_broadcast_sender.clone())?,
+                );
             }
             map.insert(remote.addr, local_ips.get(&local).unwrap().clone());
         }
@@ -185,7 +185,7 @@ pub fn generate_sender_map(
 
     //println!("{:?}", local_ips);
 
-    Arc::new(map)
+    Ok(Arc::new(map))
 }
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -208,9 +208,9 @@ impl SendRequest {
 
 pub fn generate_sender_thread(
     mut stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
-) -> crossbeam::channel::Sender<SendRequest> {
+) -> Result<crossbeam::channel::Sender<SendRequest>, std::io::Error> {
     let (tx, rx) = crossbeam::channel::unbounded::<SendRequest>();
-    let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 3 * 1024 * 1024);
+    let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 3 * 1024 * 1024)?;
 
     let rrx = rx.clone();
 
@@ -221,11 +221,17 @@ pub fn generate_sender_thread(
             _ = async {
                 loop {
                 if let Ok(req) = rx.recv() {
-                    let len = socket
+                    match socket
                         .send_to(&req.data[..], req.remote.addr)
-                        .await
-                        .unwrap();
-                    req.remote.speed_acc.fetch_add(len, Ordering::SeqCst);
+                        .await{
+                            Ok(len)=>{req.remote.speed_acc.fetch_add(len, Ordering::SeqCst);}
+                            Err(e)=>{
+                                warn!("SEND_TO {} {}", req.remote.addr, e);
+                                // 可能是虚拟网卡被移除
+                                // 因此间隔尝试
+                                tokio::time::sleep(tokio::time::Duration::from_millis(30_000)).await;
+                            }
+                        }
                 }
                 else{
                     break;
@@ -260,5 +266,5 @@ pub fn generate_sender_thread(
         }
     });
 
-    tx
+    Ok(tx)
 }
