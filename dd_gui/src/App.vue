@@ -13,7 +13,7 @@
         padding: '0 50px',
         marginTop: '64px',
         //height: '100vh',
-        background: 'rgba(255,255,255,0.2)',
+        //background: 'rgba(255,255,255,0.2)',
       }"
     >
       <a-layout-sider
@@ -53,8 +53,8 @@
           :style="{
             margin: '24px 0px 0',
             overflow: 'initial',
-            height: '100vh',
-            background: 'rgba(255,255,255,0.2)',
+            //height: '100vh',
+            //background: 'rgba(255,255,255,0.2)',
           }"
         >
           <template v-if="selectedKeys[0] == 'add'"> </template>
@@ -191,6 +191,10 @@ export default defineComponent({
 }
 .site-layout .site-layout-background {
   background: #fff;
+}
+body {
+  height: 100vh;
+  background: #f0f2f5;
 }
 
 [data-theme="dark"] .site-layout .site-layout-background {
