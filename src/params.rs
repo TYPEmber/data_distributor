@@ -267,6 +267,20 @@ impl Group {
         serde_json::from_reader(fs).unwrap()
     }
 
+    // pub fn run(&self){
+
+    //     match crate::initial(self.get_flat_enable(), cmd.recv_buffer, cmd.send_buffer, stop_trigger) {
+    //         Ok((dis_vec, sender_map)) => {
+    //             crate::run(dis_vec, sender_map).await;
+    //             // recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
+    //             // send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 5e8).await;
+
+    //             //stop_sender.send(());
+    //         }
+    //         Err(e) => {}
+    //     }
+    // }
+
     pub fn get_plain_enable(&self) -> Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)> {
         let mut res = Vec::new();
         for (_, value) in self.map.iter() {

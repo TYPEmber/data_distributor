@@ -47,7 +47,7 @@ struct Opt {
     para: Option<String>,
 }
 
-// cargo run --bin main -- -a "127.0.0.1:5503 -> 127.0.0.1:19208 127.0.0.1:19210" -a "127.0.0.1:5504 -> 127.0.0.1:19211 127.0.0.1:19212" -save --release
+// cargo run --bin main --release -- -a "127.0.0.1:5503 -> 127.0.0.1:19208 127.0.0.1:19210" -a "127.0.0.1:5504 -> 127.0.0.1:19211 127.0.0.1:19212"
 #[tokio::main]
 async fn main() {
     let stop_trigger = crate::logger::init().unwrap();
@@ -78,8 +78,8 @@ async fn main() {
     match crate::initial(dis_vec, cmd.recv_buffer, cmd.send_buffer, stop_trigger) {
         Ok((dis_vec, sender_map)) => {
             crate::run(dis_vec, sender_map).await;
-            // recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
-            // send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 5e8).await;
+            recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
+            send_pkg("127.0.0.1:5503".parse().unwrap(), 100_000_0, 1e9).await;
 
             //stop_sender.send(());
         }

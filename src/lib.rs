@@ -18,7 +18,7 @@ pub fn initial(
     distributors: Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
     recv_buff_size: usize,
     send_buff_size: usize,
-    stop_trigger: tokio::sync::broadcast::Sender<()>
+    stop_trigger: tokio::sync::broadcast::Sender<()>,
 ) -> Result<
     (
         Vec<Distributor>,
@@ -29,7 +29,11 @@ pub fn initial(
     let mut dis_vec = vec![];
 
     for (local_addr, remote_addrs) in distributors.into_iter() {
-        dis_vec.push(Distributor::new(local_addr, remote_addrs, stop_trigger.clone())?);
+        dis_vec.push(Distributor::new(
+            local_addr,
+            remote_addrs,
+            stop_trigger.clone(),
+        )?);
     }
 
     let dis_vec = dis_vec;
@@ -167,7 +171,7 @@ pub fn generate_sender_map(
     let mut map = HashMap::new();
     let mut local_ips = HashMap::new();
     // It will choose the same sender port for every net card
-    let mut socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
     for item in distributors {
         for remote in &item.remote {
             socket.connect(remote.addr)?;
@@ -188,7 +192,7 @@ pub fn generate_sender_map(
     Ok(Arc::new(map))
 }
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct RemoteInfo {
     pub addr: std::net::SocketAddr,
@@ -207,7 +211,7 @@ impl SendRequest {
 }
 
 pub fn generate_sender_thread(
-    mut stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
+    stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
 ) -> Result<crossbeam::channel::Sender<SendRequest>, std::io::Error> {
     let (tx, rx) = crossbeam::channel::unbounded::<SendRequest>();
     let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, 3 * 1024 * 1024)?;
@@ -215,43 +219,50 @@ pub fn generate_sender_thread(
     let rrx = rx.clone();
 
     let mut stop_for_send_thread = stop_broadcast_sender.subscribe();
+    let mut stop_for_send_thread_1 = stop_broadcast_sender.subscribe();
 
     tokio::spawn(async move {
         tokio::select! {
             _ = async {
                 loop {
-                if let Ok(req) = rx.recv() {
-                    match socket
-                        .send_to(&req.data[..], req.remote.addr)
-                        .await{
-                            Ok(len)=>{req.remote.speed_acc.fetch_add(len, Ordering::SeqCst);}
-                            Err(e)=>{
-                                warn!("SEND_TO {} {}", req.remote.addr, e);
-                                // 可能是虚拟网卡被移除
-                                // 因此间隔尝试
-                                tokio::time::sleep(tokio::time::Duration::from_millis(30_000)).await;
+                    //tokio::task::yield_now().await;
+                    if let Ok(req) = rx.recv() {
+                        match socket
+                            .send_to(&req.data[..], req.remote.addr)
+                            .await{
+                                Ok(len)=>{req.remote.speed_acc.fetch_add(len, Ordering::SeqCst);}
+                                Err(e)=>{
+                                    warn!("SEND_TO {} {}", req.remote.addr, e);
+                                    // 可能是虚拟网卡被移除
+                                    // 因此间隔尝试
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(30_000)).await;
+                                }
                             }
-                        }
+                      }
+                    else {
+                        break;
+                    }
                 }
-                else{
-                    break;
-                }
-            }
-            }=>{},
-            _ = async{
+            }=>{println!("sfadfasdf")},
+            _ =tokio::spawn(async move  {
                 let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
 
+                interval.tick().await;
+                interval.tick().await;
                 let mut flag_count = 0usize;
-                interval.tick().await;
-                interval.tick().await;
+                //tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 loop {
+                    println!("here");
+                    if let Ok(()) = stop_for_send_thread_1.try_recv(){
+                        break;
+                    }
                     let count_last = rrx.len();
                     interval.tick().await;
                     let count = rrx.len();
                     if count > count_last {
                         if flag_count > 3 {
                             println!("buffer len: {}", count);
-                            for i in 0..count / 2 {
+                            for _ in 0..count / 2 {
                                 rrx.try_recv();
                             }
                             flag_count = 4;
@@ -261,8 +272,10 @@ pub fn generate_sender_thread(
                         flag_count = 0;
                     }
                 }
-            } => {},
-            _ = stop_for_send_thread.recv() =>{}
+            }) => { println!("ana send closed")},
+            _ = tokio::spawn(async move {stop_for_send_thread.recv().await}) =>{
+                println!("send closed");
+            }
         }
     });
 

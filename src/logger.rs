@@ -64,7 +64,8 @@ impl AsyncLogger {
 
         //println!("{:?}",  std::env::current_dir().unwrap_or_default());
 
-        let main_page = warp::path::end().and(warp::fs::file("ui.html"));
+        let main_page = warp::get().and(warp::fs::dir("dd_gui/dist/"));
+        //let main_page = warp::get().and(warp::fs::file("ui.html"));
 
         let stop = warp::post()
             .and(warp::path("api"))
@@ -73,9 +74,14 @@ impl AsyncLogger {
             .and_then(|| async move {
                 if let Ok(count) = CH.0.send(()) {
                     // TODO: 尝试超时返回失败
+                    let mut try_count = 0;
                     while CH.0.receiver_count() > 1 {
+                        try_count+=1;
                         println!("{}", CH.0.receiver_count());
-                        tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                        if try_count > 10{
+                            break;
+                        }
                     }
                     Ok("stop success!".to_string())
                 } else {
@@ -148,12 +154,23 @@ impl AsyncLogger {
                             .to_string()
                     })
                     .collect();
-                warp::http::Response::builder().body((serde_json::to_string(&res).unwrap()))
+                warp::http::Response::builder()
+                    .header("content-type", "text/html; charset=utf-8")
+                    .header("cache-control", "no-cache")
+                    .header("x-content-type-options", "nosniff")
+                    .body((serde_json::to_string(&res).unwrap()))
             });
         tokio::spawn(async move {
-            warp::serve(main_page.or(get_speed).or(get_group).or(stop).or(start))
-                .run(([0, 0, 0, 0], 8080))
-                .await;
+            warp::serve(
+                main_page
+                    // .or(basic_get)
+                    .or(get_speed)
+                    .or(get_group)
+                    .or(stop)
+                    .or(start),
+            )
+            .run(([0, 0, 0, 0], 8080))
+            .await;
         });
         AsyncLogger { tx }
     }
