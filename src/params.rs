@@ -8,7 +8,7 @@ mod tests {
     fn test_func_get_flat_enable() {
         let dis_0 = Distributor {
             name: "dis_0".to_string(),
-            notes: "no comment".to_string(),
+            note: "no comment".to_string(),
             enable: true,
             local_addr: "127.0.0.1:5503".parse().unwrap(),
             remote_addrs: vec![
@@ -31,7 +31,7 @@ mod tests {
         };
         let dis_1 = Distributor {
             name: "dis_1".to_string(),
-            notes: "no comment".to_string(),
+            note: "no comment".to_string(),
             enable: false,
             local_addr: "127.0.0.1:5504".parse().unwrap(),
             remote_addrs: vec![
@@ -55,16 +55,16 @@ mod tests {
 
         let mut set_0 = Sets {
             name: "sets_0".to_string(),
-            notes: "no comment".to_string(),
+            note: "no comment".to_string(),
             enable: true,
-            map: std::collections::HashMap::new(),
+            vec: vec![],
         };
-        set_0.map.insert(dis_0.name.clone(), dis_0);
-        set_0.map.insert(dis_1.name.clone(), dis_1);
+        set_0.vec.push(dis_0);
+        set_0.vec.push(dis_1);
 
         let dis_2 = Distributor {
             name: "dis_2".to_string(),
-            notes: "no comment".to_string(),
+            note: "no comment".to_string(),
             enable: true,
             local_addr: "127.0.0.1:5505".parse().unwrap(),
             remote_addrs: vec![
@@ -87,7 +87,7 @@ mod tests {
         };
         let dis_3 = Distributor {
             name: "dis_3".to_string(),
-            notes: "no comment".to_string(),
+            note: "no comment".to_string(),
             enable: true,
             local_addr: "127.0.0.1:5506".parse().unwrap(),
             remote_addrs: vec![
@@ -111,18 +111,16 @@ mod tests {
 
         let mut set_1 = Sets {
             name: "sets_1".to_string(),
-            notes: "no comment".to_string(),
+            note: "no comment".to_string(),
             enable: true,
-            map: std::collections::HashMap::new(),
+            vec: vec![],
         };
-        set_1.map.insert(dis_2.name.clone(), dis_2);
-        set_1.map.insert(dis_3.name.clone(), dis_3);
+        set_1.vec.push(dis_2);
+        set_1.vec.push(dis_3);
 
-        let mut group_0 = Group {
-            map: std::collections::HashMap::new(),
-        };
-        group_0.map.insert(set_0.name.clone(), set_0);
-        group_0.map.insert(set_1.name.clone(), set_1);
+        let mut group_0 = Group { vec: vec![] };
+        group_0.vec.push(set_0);
+        group_0.vec.push(set_1);
 
         println!("{:?}", group_0.get_flat_enable());
         println!("{:?}", group_0.get_plain_enable());
@@ -164,24 +162,37 @@ mod tests {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Remote {
+    pub addr: std::net::SocketAddr,
+    pub note: String,
+    pub enable: bool,
+}
+impl Remote {
+    pub fn new(addr: std::net::SocketAddr, note: String, enable: bool) -> Self {
+        Self { addr, note, enable }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Distributor {
     // key
     pub name: String,
     // notes
-    pub notes: String,
+    pub note: String,
     pub enable: bool,
+    pub recv_buffer: usize,
     // recv_point
     pub local_addr: std::net::SocketAddr,
     // (send_to_point, notes, enable_flag)
-    pub remote_addrs: Vec<(std::net::SocketAddr, String, bool)>,
+    pub remote_addrs: Vec<Remote>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Sets {
     pub name: String,
-    pub notes: String,
+    pub note: String,
     pub enable: bool,
-    pub map: std::collections::HashMap<String, Distributor>,
+    pub vec: Vec<Distributor>,
 }
 
 // 需要被序列化和反序列化
@@ -191,80 +202,76 @@ pub struct Sets {
 // 命令行参数中添加 --para 用于指定读取 Group 序列化后文件作为输入
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Group {
-    pub map: std::collections::HashMap<String, Sets>,
+    pub send_buffer: usize,
+    pub vec: Vec<Sets>,
 }
 impl Group {
     // 该函数用于从 Group 中获取初始化 lib.rs 的所有所需信息
     // 返回标记为 enable 的所有 Sets 中的所有 Distributor
     // 其中每个 Distributor 对应的 Vec 中只包含该 Distributor 中 enable 的 remote_addr
     pub fn get_flat_enable(&self) -> Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)> {
-        self.map
+        self.vec
             .iter()
-            .filter(|(_, set)| set.enable)
-            .flat_map(|(_, set)| set.map.iter())
-            .filter(|(_, distributor)| distributor.enable)
-            .map(|(_, distributor)| {
+            .filter(|set| set.enable)
+            .flat_map(|set| set.vec.iter())
+            .filter(|distributor| distributor.enable)
+            .map(|distributor| {
                 (
                     distributor.local_addr,
                     distributor
                         .remote_addrs
                         .iter()
-                        .filter(|(_, _, enable)| *enable)
-                        .map(|(addr, _, _)| *addr)
+                        .filter(|remote| remote.enable)
+                        .map(|remote| remote.addr)
                         .collect(),
                 )
             })
             .collect()
     }
 
-    pub fn from_flat_enable(flat: &Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)>) -> Self {
-        let mut set_0 = Sets {
-            name: "default_set".to_string(),
-            notes: "no comment".to_string(),
-            enable: true,
-            map: std::collections::HashMap::new(),
-        };
-
-        flat.iter()
-            .enumerate()
-            .map(|(index, (local_addr, remote_addrs))| {
-                set_0.map.insert(
-                    "dis_".to_string() + &index.to_string(),
-                    Distributor {
+    pub fn from_flat_enable(
+        flat: &Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
+        recv_buffer: usize,
+        send_buffer: usize,
+    ) -> Self {
+        Group {
+            send_buffer,
+            vec: vec![Sets {
+                name: "default_set".to_string(),
+                note: "no comment".to_string(),
+                enable: true,
+                vec: flat
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (local_addr, remote_addrs))| Distributor {
                         name: "dis_".to_string() + &index.to_string(),
-                        notes: "no comment".to_string(),
+                        note: "no comment".to_string(),
                         enable: true,
+                        recv_buffer,
                         local_addr: *local_addr,
                         remote_addrs: remote_addrs
                             .iter()
-                            .map(|addr| (*addr, "no comment".to_string(), true))
+                            .map(|addr| Remote::new(*addr, "no comment".to_string(), true))
                             .collect(),
-                    },
-                );
-            })
-            .count();
-
-        let mut group = Group {
-            map: std::collections::HashMap::new(),
-        };
-        group.map.insert(set_0.name.clone(), set_0);
-
-        group
+                    })
+                    .collect(),
+            }],
+        }
     }
 
-    pub fn get_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
+    pub fn get_json(&self) -> Result<String, std::io::Error> {
+        Ok(serde_json::to_string(self)?)
     }
 
-    // TODO: error handle
-    pub fn save(&self, path: &str) {
-        let fs = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
-        serde_json::to_writer(fs, self).unwrap();
+    pub fn save(&self, path: &str) -> Result<(), std::io::Error> {
+        serde_json::to_writer(std::io::BufWriter::new(std::fs::File::create(path)?), self)?;
+        Ok(())
     }
-    // TODO: error handle
-    pub fn load(path: &str) -> Self {
-        let fs = std::io::BufReader::new(std::fs::File::open(path).unwrap());
-        serde_json::from_reader(fs).unwrap()
+
+    pub fn load(path: &str) -> Result<Self, std::io::Error> {
+        Ok(serde_json::from_reader(std::io::BufReader::new(
+            std::fs::File::open(path)?,
+        ))?)
     }
 
     // pub fn run(&self){
@@ -280,24 +287,4 @@ impl Group {
     //         Err(e) => {}
     //     }
     // }
-
-    pub fn get_plain_enable(&self) -> Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)> {
-        let mut res = Vec::new();
-        for (_, value) in self.map.iter() {
-            if value.enable == true {
-                for (_, value1) in value.map.iter() {
-                    if value1.enable == true {
-                        let mut res_remote = Vec::new();
-                        for value2 in value1.remote_addrs.iter() {
-                            if value2.2 == true {
-                                res_remote.push(value2.0);
-                            }
-                        }
-                        res.push((value1.local_addr, res_remote));
-                    }
-                }
-            }
-        }
-        res
-    }
 }
