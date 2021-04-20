@@ -43,6 +43,8 @@ struct Opt {
     add: Vec<Pair>,
     #[structopt(long)]
     save: bool,
+    #[structopt(long, default_value = "8080")]
+    server: u16,
     #[structopt(long)]
     para: Option<String>,
 }
@@ -50,11 +52,10 @@ struct Opt {
 // cargo run --bin main --release -- -a "127.0.0.1:5503 -> 127.0.0.1:19208 127.0.0.1:19210" -a "127.0.0.1:5504 -> 127.0.0.1:19211 127.0.0.1:19212"
 #[tokio::main]
 async fn main() {
-    let (stop_trigger, _) = tokio::sync::broadcast::channel(1);
-    crate::logger::init().unwrap();
-    let server_port = crate::server::run(crate::logger::subscribe(), stop_trigger.clone()).unwrap();
-
     let cmd = Opt::from_args();
+    let (stop_trigger, _) = tokio::sync::broadcast::channel(1);
+    crate::logger::init();
+
     let recv_buffer = cmd.recv_buffer;
     let send_buffer = cmd.send_buffer;
 
@@ -77,13 +78,10 @@ async fn main() {
         (dis_vec, group)
     };
 
+    let msg_rx = crate::logger::subscribe();
     info!("GROUP {}", group.get_json().unwrap());
 
-    match crate::initial(
-        dis_vec,
-        group.send_buffer,
-        stop_trigger.clone(),
-    ) {
+    match crate::initial(dis_vec, group.send_buffer, stop_trigger.clone()) {
         Ok((dis_vec, sender_map)) => {
             crate::run(dis_vec, sender_map).await;
             // recv_pkg("127.0.0.1:19208".parse().unwrap(), 100_000_0).await;
@@ -94,9 +92,7 @@ async fn main() {
         Err(e) => {}
     }
 
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_millis(1_000)).await;
-    }
+    crate::server::run(cmd.server, msg_rx, stop_trigger.clone()).await;
 }
 
 async fn test_socket_send_limited() {

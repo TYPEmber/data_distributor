@@ -45,14 +45,10 @@ use log::{LevelFilter, SetLoggerError};
 
 lazy_static::lazy_static! {
     static ref LOGGER: AsyncLogger = AsyncLogger::new();
-    static ref CH:( tokio::sync::broadcast::Sender<()>,  tokio::sync::broadcast::Receiver<()>) =  tokio::sync::broadcast::channel(1);
 }
 
-pub fn init() -> Result<tokio::sync::broadcast::Sender<()>, SetLoggerError> {
-    match log::set_logger(&*LOGGER).map(|()| log::set_max_level(LevelFilter::Info)) {
-        Ok(()) => Ok(CH.0.clone()),
-        Err(e) => Err(e),
-    }
+pub fn init() {
+    log::set_logger(&*LOGGER).map(|()| log::set_max_level(LevelFilter::Info)).unwrap();
 }
 
 pub fn subscribe() -> tokio::sync::broadcast::Receiver<String> {

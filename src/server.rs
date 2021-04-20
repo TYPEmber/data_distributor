@@ -11,10 +11,11 @@ struct SpeedRequest {
     vec: Vec<String>,
 }
 
-pub fn run(
+pub async fn run(
+    listen_port: u16,
     mut msg_rx: tokio::sync::broadcast::Receiver<String>,
     stop_tx: tokio::sync::broadcast::Sender<()>,
-) -> Result<u16, String> {
+) {
     let map = Arc::new(std::sync::Mutex::new(std::collections::HashMap::<
         String,
         String,
@@ -197,19 +198,15 @@ pub fn run(
                 .body((serde_json::to_string(&res).unwrap()))
         });
 
-    tokio::spawn(async move {
-        warp::serve(
-            main_page
-                // .or(basic_get)
-                .or(get_speed)
-                .or(get_group)
-                .or(stop)
-                .or(start)
-                .or(start_save),
-        )
-        .run(([0, 0, 0, 0], 8080))
-        .await;
-    });
-
-    Ok(8080u16)
+    warp::serve(
+        main_page
+            // .or(basic_get)
+            .or(get_speed)
+            .or(get_group)
+            .or(stop)
+            .or(start)
+            .or(start_save),
+    )
+    .run(([0, 0, 0, 0], listen_port))
+    .await;
 }

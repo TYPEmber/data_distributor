@@ -5,13 +5,21 @@
       v-model:content="this.dis_mut.name"
       editable
     />
-    <ip-port-ui
-      :obj_with_addr="this.dis_mut"
-      :name="'local_addr'"
-      :flag="this.$root.speed_show_mode"
-      :speed="this.speed_in"
-      :pkg_speed="this.pkg_speed_in"
-    ></ip-port-ui>
+    <a-row type="flex" :gutter="[8, 8]">
+      <a-col flex="0 1 340px">
+        <ip-port-ui
+          :obj_with_addr="this.dis_mut"
+          :name="'local_addr'"
+          :flag="this.$root.speed_show_mode"
+          :speed="this.speed_in"
+          :pkg_speed="this.pkg_speed_in"
+        ></ip-port-ui
+      ></a-col>
+      <a-col flex="auto">
+        <a-typography-paragraph v-model:content="this.dis_mut.note" editable />
+      </a-col>
+    </a-row>
+
     <a-divider orientation="left" style="font-size: 14px">Send To</a-divider>
     <a-row
       type="flex"

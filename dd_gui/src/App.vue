@@ -9,39 +9,42 @@
         width: '100%',
       }"
     >
-      <a-row type="flex" justify="center">
-        <a-col :flex="4">
+      <a-row type="flex">
+        <a-col :flex="auto">
           <p />
           <a-typography-title :level="3" :style="{ color: '#fff' }">
             DataDistributor-V1.0.0.1
           </a-typography-title>
         </a-col>
-        <a-col :flex="2"
-          ><a-button
-            type="primary"
-            @click="
-              () => {
-                this.speed_show_mode = !this.speed_show_mode;
-              }
-            "
-            >SHOW_M</a-button
-          ></a-col
-        >
-        <a-col :flex="2"
-          ><a-button type="primary" @click="stop_start(0)"
-            >STOP</a-button
-          ></a-col
-        >
-        <a-col :flex="2"
-          ><a-button type="primary" @click="start_save()"
-            >START_SAVE</a-button
-          ></a-col
-        >
-        <a-col :flex="2"
-          ><a-button type="primary" @click="stop_start(1)"
-            >START</a-button
-          ></a-col
-        >
+        <a-col flex="1 1 auto"> </a-col>
+        <a-space>
+          <a-col
+            ><a-button
+              type="primary"
+              @click="
+                () => {
+                  this.speed_show_mode = !this.speed_show_mode;
+                }
+              "
+              >SHOW_M</a-button
+            ></a-col
+          >
+          <a-col
+            ><a-button type="primary" @click="stop_start(0)"
+              >STOP</a-button
+            ></a-col
+          >
+          <a-col
+            ><a-button
+              type="primary"
+              @click="
+                stop_start(0);
+                start_save();
+              "
+              >START_SAVE</a-button
+            ></a-col
+          >
+        </a-space>
       </a-row>
     </a-layout-header>
     <a-layout-content
@@ -189,7 +192,7 @@ export default defineComponent({
             let speed = buf[0];
             let pkg_speed = buf[1];
             let set = this.group.vec[vec_req[key].set_key];
-            if(set == undefined){
+            if (set == undefined) {
               continue;
             }
             let dis = set.vec[vec_req[key].dis_key];
@@ -257,6 +260,20 @@ export default defineComponent({
   },
   data() {
     return {
+      speed_unit_list: [
+        "B/s",
+        "KB/s",
+        "MB/s",
+        "GB/s",
+        "TB/s",
+        "PB/s",
+        "EB/s",
+        "ZB/s",
+        "YB/s",
+        "BB/s",
+        "NB/s",
+        "DB/s",
+      ],
       speed_show_mode: false,
       group: { vec: [] },
       host_group: { vec: [] },
@@ -307,11 +324,28 @@ export default defineComponent({
     start_save() {
       console.log(JSON.stringify(this.group));
       axios
-        .post("/api/ctrl/start_save/", { vec: this.group.vec })
+        .post("/api/ctrl/start_save/", {
+          send_buffer: this.group.send_buffer,
+          vec: this.group.vec,
+        })
         .then((response) => {
           console.log(response);
           this.host_group = JSON.parse(JSON.stringify(this.group));
         });
+    },
+
+    get_speed_show(speed, pkg_speed, flag) {
+      if (!flag) {
+        speed = speed / 8.0;
+        let count = 0;
+        while (speed / 1024.0 >= 1) {
+          speed = speed / 1024.0;
+          count++;
+        }
+        return speed.toPrecision(6) + this.speed_unit_list[count];
+      } else {
+        return pkg_speed + " pkg/s";
+      }
     },
   },
 

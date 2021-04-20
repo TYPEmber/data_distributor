@@ -50,6 +50,9 @@
         /></a-col>
       </a-space>
     </a-row>
+    <a-row>
+       <a-typography-paragraph v-model:content="this.set_mut.note" editable />
+    </a-row>
     <a-collapse v-model:activeKey="activeKey">
       <a-collapse-panel
         v-for="(dis, dis_index) in this.set_mut.vec"
@@ -113,6 +116,7 @@
             name: 'dis_new',
             enable: false,
             note: 'no comment',
+            recv_buffer: 1048576,
             local_addr: '',
             remote_addrs: [],
           });
@@ -184,13 +188,12 @@ export default defineComponent({
         }
       }
 
-      if (!this.$root.speed_show_mode) {
-        return "IN: " + speed_in + " OUT: " + speed_out;
-      } else {
-        return (
-          "IN: " + pkg_speed_in + " pkg/s OUT: " + pkg_speed_out + " pkg/s"
-        );
-      }
+      return (
+        "IN: " +
+        this.$root.get_speed_show(speed_in, pkg_speed_in, this.$root.speed_show_mode) +
+        " OUT: " +
+        this.$root.get_speed_show(speed_out, pkg_speed_out, this.$root.speed_show_mode)
+      );
     },
   },
   // mounted() {

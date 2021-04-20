@@ -23,20 +23,6 @@ export default {
   setup(props) {
     //console.log([props]);
     return {
-      speed_unit_list: [
-        "B/s",
-        "KB/s",
-        "MB/s",
-        "GB/s",
-        "TB/s",
-        "PB/s",
-        "EB/s",
-        "ZB/s",
-        "YB/s",
-        "BB/s",
-        "NB/s",
-        "DB/s",
-      ],
       addr_ref: toRef(props.obj_with_addr, props.name),
     };
   },
@@ -70,17 +56,7 @@ export default {
   },
   computed: {
     speed_show: function () {
-      if (!this.flag) {
-        let speed = this.speed / 8.0;
-        let count = 0;
-        while (speed / 1024.0 >= 1) {
-          speed = speed / 1024.0;
-          count++;
-        }
-        return speed.toPrecision(6) + this.speed_unit_list[count];
-      } else {
-        return this.pkg_speed + " pkg/s";
-      }
+      return this.$root.get_speed_show(this.speed, this.pkg_speed, this.flag);
     },
   },
 };
