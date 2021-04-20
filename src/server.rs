@@ -84,7 +84,7 @@ pub fn run(
             async move {
                 if let Ok(_) = stop_tx_m.send(()) {
                     // TODO: 尝试超时返回失败
-                    let mut try_count = 0;
+                    let mut try_count = 0usize;
                     while stop_tx_m.receiver_count() > 1 {
                         try_count += 1;
                         println!("{}", stop_tx_m.receiver_count());
@@ -114,7 +114,7 @@ pub fn run(
             } else {
                 if let Ok(group) = crate::params::Group::load("params.json") {
                     let dis_vec = group.get_flat_enable();
-                    match crate::initial(dis_vec, 1024 * 1024, 1024 * 1024, stop_tx_m.clone()) {
+                    match crate::initial(dis_vec, group.send_buffer, stop_tx_m.clone()) {
                         Ok((dis_vec, sender_map)) => {
                             tokio::spawn(async move {
                                 crate::run(dis_vec, sender_map).await;
@@ -138,7 +138,7 @@ pub fn run(
         .map(move |group: crate::params::Group| {
             println!("{:?}", group);
             let dis_vec = group.get_flat_enable();
-            match crate::initial(dis_vec, 1024 * 1024, 1024 * 1024, stop_tx_m.clone()) {
+            match crate::initial(dis_vec, group.send_buffer, stop_tx_m.clone()) {
                 Ok((dis_vec, sender_map)) => {
                     if let Ok(json) = group.get_json() {
                         info!("GROUP {}", json);

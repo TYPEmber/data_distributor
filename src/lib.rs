@@ -16,8 +16,7 @@ pub mod params;
 pub mod server;
 
 pub fn initial(
-    distributors: Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
-    recv_buff_size: usize,
+    distributors: Vec<(usize, std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
     send_buff_size: usize,
     stop_trigger: tokio::sync::broadcast::Sender<()>,
 ) -> Result<
@@ -29,7 +28,7 @@ pub fn initial(
 > {
     let mut dis_vec = vec![];
 
-    for (local_addr, remote_addrs) in distributors.into_iter() {
+    for (recv_buff_size, local_addr, remote_addrs) in distributors.into_iter() {
         dis_vec.push(Distributor::new(
             recv_buff_size,
             local_addr,

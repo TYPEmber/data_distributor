@@ -209,7 +209,7 @@ impl Group {
     // 该函数用于从 Group 中获取初始化 lib.rs 的所有所需信息
     // 返回标记为 enable 的所有 Sets 中的所有 Distributor
     // 其中每个 Distributor 对应的 Vec 中只包含该 Distributor 中 enable 的 remote_addr
-    pub fn get_flat_enable(&self) -> Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)> {
+    pub fn get_flat_enable(&self) -> Vec<(usize, std::net::SocketAddr, Vec<std::net::SocketAddr>)> {
         self.vec
             .iter()
             .filter(|set| set.enable)
@@ -217,6 +217,7 @@ impl Group {
             .filter(|distributor| distributor.enable)
             .map(|distributor| {
                 (
+                    distributor.recv_buffer,
                     distributor.local_addr,
                     distributor
                         .remote_addrs
@@ -230,8 +231,7 @@ impl Group {
     }
 
     pub fn from_flat_enable(
-        flat: &Vec<(std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
-        recv_buffer: usize,
+        flat: &Vec<(usize, std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
         send_buffer: usize,
     ) -> Self {
         Group {
@@ -243,11 +243,11 @@ impl Group {
                 vec: flat
                     .iter()
                     .enumerate()
-                    .map(|(index, (local_addr, remote_addrs))| Distributor {
+                    .map(|(index, (recv_buffer, local_addr, remote_addrs))| Distributor {
                         name: "dis_".to_string() + &index.to_string(),
                         note: "no comment".to_string(),
                         enable: true,
-                        recv_buffer,
+                        recv_buffer: *recv_buffer,
                         local_addr: *local_addr,
                         remote_addrs: remote_addrs
                             .iter()

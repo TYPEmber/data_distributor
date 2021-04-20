@@ -55,6 +55,8 @@ async fn main() {
     let server_port = crate::server::run(crate::logger::subscribe(), stop_trigger.clone()).unwrap();
 
     let cmd = Opt::from_args();
+    let recv_buffer = cmd.recv_buffer;
+    let send_buffer = cmd.send_buffer;
 
     let (dis_vec, group) = if let Some(para_path) = cmd.para {
         let group = params::Group::load(&para_path[..]).unwrap();
@@ -64,9 +66,9 @@ async fn main() {
         let dis_vec = cmd
             .add
             .into_iter()
-            .map(|p| (p.local_addr, p.remote_addrs))
+            .map(|p| (recv_buffer, p.local_addr, p.remote_addrs))
             .collect();
-        let group = params::Group::from_flat_enable(&dis_vec, cmd.recv_buffer, cmd.send_buffer);
+        let group = params::Group::from_flat_enable(&dis_vec, send_buffer);
 
         if cmd.save {
             group.save("params.json").unwrap();
@@ -79,8 +81,7 @@ async fn main() {
 
     match crate::initial(
         dis_vec,
-        cmd.recv_buffer,
-        cmd.send_buffer,
+        group.send_buffer,
         stop_trigger.clone(),
     ) {
         Ok((dis_vec, sender_map)) => {
