@@ -18,7 +18,7 @@ impl std::str::FromStr for Pair {
     type Err = std::net::AddrParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let addrs: Vec<&str> = s.split(' ').filter(|x| x.len() >= 7).collect();
+        let addrs: Vec<&str> = s.split_whitespace().filter(|&x| x != "->").collect();
 
         let local = addrs[0].parse::<std::net::SocketAddr>()?;
         let mut remotes = vec![];
@@ -35,11 +35,14 @@ impl std::str::FromStr for Pair {
 
 #[derive(StructOpt, Debug)]
 struct Opt {
-    #[structopt(short, long, default_value = "4194304")]
+    #[structopt(long, default_value = "4194304")]
     recv_buffer: usize,
-    #[structopt(short, long, default_value = "4194304")]
+    #[structopt(long, default_value = "4194304")]
     send_buffer: usize,
-    #[structopt(short, long)]
+    #[structopt(
+        long,
+        default_value = "127.0.0.1:5503 -> 127.0.0.1:19208 192.168.1.100:1900"
+    )]
     add: Vec<Pair>,
     #[structopt(long)]
     save: bool,
