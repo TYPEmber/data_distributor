@@ -16,7 +16,7 @@ pub struct Opt {
     send_buffer: usize,
     #[structopt(short, long, default_value = "1000000000.0")]
     speed_rate: f64,
-    #[structopt(short, long, default_value = "500000")]
+    #[structopt(short, long, default_value = "2000000")]
     package_count: u32,
     #[structopt(short, long, default_value = "1350")]
     buffer_length: usize,
