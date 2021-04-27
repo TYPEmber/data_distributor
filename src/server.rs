@@ -10,7 +10,21 @@ use warp::{
 struct SpeedRequest {
     vec: Vec<String>,
 }
-
+/// 运行服务器端线程
+/// 
+/// 该服务器端线程，主要实现了五个类别的HTTP请求响应。
+/// # start
+/// 在Web客户端启动程序。如果软件在之前已经启动，会反馈一个running信息，
+/// 如果未启动，则成功运行后，会反馈一个start信息。
+/// # start_save
+/// 该请求，会在启动软件同时，把在Web客户端设置的配置信息，已json文件形式
+/// 保存到本地。
+/// # stop
+/// 客户端发送stop的HTTP请求后，软件会停止运行。
+/// # get_speed
+/// 收到该HTTP请求，会在HTTP响应中包含数据包的接收，发送速率
+/// # get_group 
+/// 收到该HTTP请求，会在响应中包含当前软件运行的配置信息
 pub async fn run(
     listen_port: u16,
     mut msg_rx: tokio::sync::broadcast::Receiver<String>,
