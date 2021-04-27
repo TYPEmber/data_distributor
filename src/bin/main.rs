@@ -37,9 +37,12 @@ impl std::str::FromStr for Pair {
 struct Opt {
     #[structopt(short, long, default_value = "1048576")]
     recv_buffer: usize,
-    #[structopt(short, long, default_value = "4194304")]
+    #[structopt(long, default_value = "4194304")]
     send_buffer: usize,
-    #[structopt(short, long)]
+    #[structopt(
+        long,
+        default_value = "127.0.0.1:5503 -> 127.0.0.1:19208 192.168.1.100:1900"
+    )]
     add: Vec<Pair>,
     #[structopt(long)]
     save: bool,
