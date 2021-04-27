@@ -1,6 +1,7 @@
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use dashmap::DashMap;
 use warp::{
     http::{Response, StatusCode},
     Filter,
@@ -30,10 +31,11 @@ pub async fn run(
     mut msg_rx: tokio::sync::broadcast::Receiver<String>,
     stop_tx: tokio::sync::broadcast::Sender<()>,
 ) {
-    let map = Arc::new(std::sync::Mutex::new(std::collections::HashMap::<
+   /* let map = Arc::new(std::sync::Mutex::new(std::collections::HashMap::<
         String,
         String,
-    >::new()));
+    >::new())); */
+    let map =Arc::new(DashMap::<String, String>::new());
     let map_0 = map.clone();
     let map_1 = map.clone();
     let map_2 = map.clone();
@@ -57,18 +59,19 @@ pub async fn run(
                                     let pkg_speed = res.next().unwrap();
                                     speed.push_str(" ");
                                     speed.push_str(pkg_speed);
-
-                                    map.lock().unwrap().insert(in_out, speed);
+                                    map.insert(in_out,speed);
+                                   // map.lock().unwrap().insert(in_out, speed);
                                 }
                                 "GROUP" => {
                                     //println!("{} {}",s.find("GROUP").unwrap(), s[s.find("GROUP").unwrap() + 5 + 1..].to_string());
                                     let json = s[s.find(v).unwrap() + v.len() + 1..].to_owned();
-
-                                    map.lock().unwrap().insert(v.to_owned(), json);
+                                      map.insert(v.to_owned(),json);
+                                     //map.lock().unwrap().insert(v.to_owned(), json);
                                 }
                                 "CLOSED" => loop {
                                     if let Some(addr) = res.next() {
-                                        map.lock().unwrap().remove(addr);
+                                       map.remove(addr);
+                                    //    map.lock().unwrap().remove(addr);
                                     } else {
                                         break;
                                     }
@@ -176,35 +179,36 @@ pub async fn run(
             }
         });
 
-    let get_group = warp::post()
+        let get_group = warp::post()
         .and(warp::path("api"))
         .and(warp::path("group"))
         .and(warp::path("get"))
         .map(move || {
             map_1
-                .lock()
-                .unwrap()
+               // .lock()
+               // .unwrap()
                 .get("GROUP".into())
                 // unprepared
-                .unwrap_or(&String::default())
+                .unwrap()
                 .to_owned()
         });
 
-    let get_speed = warp::post()
+
+        let get_speed = warp::post()
         .and(warp::path("api"))
         .and(warp::path("speed"))
         .and(warp::path("get"))
         .and(warp::body::json())
         .map(move |p: SpeedRequest| {
             //println!("asdfadfadsf {:?}", p);
-            let map_locked = map_0.lock().unwrap();
+           // let map_locked = map_0.lock().unwrap();
             let res: Vec<String> = p
                 .vec
                 .iter()
                 .map(|addr| {
-                    map_locked
+                    map_0
                         .get(addr)
-                        .unwrap_or(&"0 0".to_string())
+                        .unwrap()
                         .to_string()
                 })
                 .collect();

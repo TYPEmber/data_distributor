@@ -1,6 +1,4 @@
 use data_distributor::*;
-<<<<<<< HEAD
-=======
 use log::{debug, error, info, trace, warn};
 use socket2::{Domain, SockAddr, Socket, Type};
 use std::convert::TryInto;
@@ -12,33 +10,33 @@ use tokio::time::{sleep, Duration};
 
 #[derive(StructOpt, Debug)]
 pub struct Opt {
-    #[structopt(short, long, default_value = "4096")]
+    #[structopt(long, default_value = "4096")]
     recv_buffer: usize,
-    #[structopt(long, default_value = "4194304")]
+    #[structopt(default_value = "4194304")]
     send_buffer: usize,
-    #[structopt(short, long, default_value = "1000000000.0")]
+    #[structopt( long, default_value = "1000000000.0")]
     speed_rate: f64,
-    #[structopt(short, long, default_value = "2000000")]
+    #[structopt(long, default_value = "500000")]
     package_count: u32,
-    #[structopt(short, long, default_value = "1350")]
+    #[structopt( long, default_value = "1350")]
     buffer_length: usize,
-    #[structopt(long, default_value = "127.0.0.1:19209")]
+    #[structopt(default_value = "127.0.0.1:19209")]
     direct_addr: String,
-    #[structopt(short, long, default_value = "127.0.0.1:19211")]
+    #[structopt(long, default_value = "127.0.0.1:19211")]
     tcp_addr: String,
-    #[structopt(short, long, default_value = "127.0.0.1:19212")]
+    #[structopt( long, default_value = "127.0.0.1:19212")]
     tcp_addr_stop: String,
-    #[structopt(short, long, default_value = "127.0.0.1:19850")]
+    #[structopt( long, default_value = "127.0.0.1:19850")]
     tcp_addr_stop_2nd: String,
-    #[structopt(short, long, default_value = "127.0.0.1:5503")]
+    #[structopt( long, default_value = "127.0.0.1:5503")]
     distributor_addr: String,
-    #[structopt(short, long, default_value = "80000.0")]
+    #[structopt( long, default_value = "80000.0")]
     package_rate: f64,
     #[structopt(long)]
     pps_enable: bool,
     #[structopt(long)]
     time_limit_enable: bool,
-    #[structopt(short, long, default_value = "30.0")]
+    #[structopt(long, default_value = "30.0")]
     time_duration: f64,
 }
 
@@ -49,32 +47,32 @@ async fn send_tcp(stream: &TcpStream, buf: &[u8]) -> Result<(), Box<dyn Error>> 
             Ok(n) => {
                 break;
             }
->>>>>>> 3f9554bf5425af72a446f14a71cd5081470542e1
 
-#[tokio::main]
-async fn main() {
-    recv_pkg("0.0.0.0:19208".parse().unwrap(), 100_000_0).await;
-    send_pkg("127.0.0.1:5507".parse().unwrap(), 100_000_0, 9e8).await;
+            Err(e) => {
+                println!("{}", e);
+                return Err(e.into());
+            }
+        }
+    }
+    Ok(())
+}
 
-<<<<<<< HEAD
-=======
 async fn recv_tcp_u32(stream: &TcpStream, buffer_length:usize) -> Result<u32, Box<dyn Error>> {
     //let mut buf = [0; 5000];
     let mut buf = vec![0u8; buffer_length];
->>>>>>> 3f9554bf5425af72a446f14a71cd5081470542e1
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_millis(1_000)).await;
+        stream.readable().await?;
+        match stream.try_read(&mut buf) {
+            Ok(n) => {
+                break;
+            }
+            Err(e) => {}
+        }
     }
+    let res = u32::from_ne_bytes(buf[0..4].try_into().unwrap());
+    Ok(res)
 }
 
-<<<<<<< HEAD
-use socket2::{Domain, SockAddr, Socket, Type};
-
-async fn send_pkg(addr: std::net::SocketAddr, pkg_count: usize, speed_rate: f64) {
-    let any_addr: std::net::SocketAddr = "0.0.0.0:0".parse().unwrap();
-    let mut socket = crate::generate_socket(any_addr, 4096, 4096 * 1024).unwrap();
-
-=======
 async fn recv_tcp_f64(stream: &TcpStream,buffer_length:usize) -> Result<f64, Box<dyn Error>> {
    // let mut buf = [0; 5000];
    let mut buf = vec![0u8; buffer_length];
@@ -100,26 +98,20 @@ async fn test_send_packages(
     package_rate:f64,
     pps_enable: bool,
 ) -> f64 {
->>>>>>> 3f9554bf5425af72a446f14a71cd5081470542e1
     let mut time = std::time::SystemTime::now();
     let mut last_print_time = 0usize;
     let mut send_bits_count_last = 0usize;
     let mut send_bits_count = 0usize;
-    let mut send_pkg_count = 0usize;
-    let mut speed_now = 0.0;
-
-    let data = [0u8; 1350];
-
+    let mut send_pkg_count = 0u32;
+    let mut speed_now: f64 = 0.0;
+    let mut arr = vec![0u8; buffer_length];
+    let mut data = &mut arr[..];
     let mut watch = std::time::SystemTime::now();
 
-    while send_pkg_count < pkg_count {
+    while send_pkg_count < pkg_num {
+        // 开始记录测试时间包发送时间
         let mut time_f64 = time.elapsed().unwrap().as_secs_f64();
         if send_pkg_count % 1 == 0 {
-<<<<<<< HEAD
-            speed_now = send_bits_count as f64 / time_f64;
-            //println!("{}", time.elapsed().unwrap().as_secs_f64());
-            while (speed_now > speed_rate) {
-=======
           // pps_enable为true时，按pps速率来进行发送，否则按bps速率发送
          if pps_enable {
              // 实时统计当前的包发送速率
@@ -136,8 +128,8 @@ async fn test_send_packages(
             speed_now = send_bits_count as f64 / time_f64;
             // 如果发送速率大于预设bps发送速率，控制速率
             while speed_now > speed_rate {
->>>>>>> 3f9554bf5425af72a446f14a71cd5081470542e1
                 tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+
                 speed_now = send_bits_count as f64 / time.elapsed().unwrap().as_secs_f64()
             } }
         }
@@ -148,43 +140,27 @@ async fn test_send_packages(
             println!("{:?}", speed_now);
             last_print_time = time_usize;
         }
-
-        if let Ok(len) = socket.send_to(&data, addr).await {
-            // if len != 1350 {
-            //     panic!();
-            // }
+        // 每个发送的测试数据包，都会包含id信息，用于测试recerver端接收是否发生乱序
+        let id_bytes = send_pkg_count.to_ne_bytes();
+        data[0..4].copy_from_slice(&id_bytes[0..]);
+        // 根据递增形式给每个包一个id
+        if let Ok(len) = socket.send_to(&data, direct_ip).await {
+            // 直接发送给目标地址
+            if len != buffer_length {
+                panic!();
+            }
             send_bits_count += len * 8;
         }
+
         send_pkg_count += 1;
     }
 
-    let du = watch.elapsed().unwrap().as_secs_f64();
+    // 记录发包的总时间
+    let duration_time = watch.elapsed().unwrap().as_secs_f64();
 
-    println!(
-        "send_pkg_count: {} speed: {} duration: {}",
-        send_pkg_count, speed_now, du
-    );
+    duration_time
 }
 
-<<<<<<< HEAD
-async fn recv_pkg(addr: std::net::SocketAddr, pkg_count: usize) {
-    let mut socket = crate::generate_socket(addr, 4096 * 4096 * 10, 4096).unwrap();
-
-    let mut recv_pkg_count = 0usize;
-
-    tokio::spawn(async move {
-        let mut buffer = [0u8; 5000];
-        while recv_pkg_count < pkg_count {
-            socket.recv(&mut buffer).await;
-            recv_pkg_count += 1;
-
-            if recv_pkg_count % 10000 == 0 {
-                println!("has recv: {}", recv_pkg_count);
-            }
-        }
-        println!("mission complete");
-    });
-=======
 
 
 async fn test_send_packages_time_limit(
@@ -402,7 +378,6 @@ async fn send_pkg(
     data[0..8].copy_from_slice(&duration_time.to_ne_bytes());
     send_tcp(&stream, data).await.unwrap();
     println!("the time is {}", duration_time);
->>>>>>> 3f9554bf5425af72a446f14a71cd5081470542e1
 }
 
 

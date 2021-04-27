@@ -25,3 +25,4 @@ warp = "*"
 regex = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
+dashmap="4.0.2"
