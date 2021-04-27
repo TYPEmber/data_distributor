@@ -40,15 +40,15 @@ export default {
   },
   watch: {
     ip_input(val) {
-      console.log(val);
+      //console.log(val);
       this.addr_ref = val + ":" + this.port_input;
     },
     port_input(val) {
-      console.log(val);
+      //console.log(val);
       this.addr_ref = this.ip_input + ":" + val;
     },
     obj_with_addr(val) {
-      console.log(val);
+      //console.log(val);
       this.addr_ref = toRef(val, this.name);
       this.ip_input = this.addr_ref.split(":")[0];
       this.port_input = this.addr_ref.split(":")[1];

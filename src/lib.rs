@@ -59,7 +59,12 @@ pub fn generate_socket(
     send_buff_size: usize,
 ) -> Result<tokio::net::UdpSocket, std::io::Error> {
     let sender = Socket::new(Domain::IPV4, Type::DGRAM, None)?;
-    sender.bind(&SockAddr::from(bind_addr))?;
+    if let Err(e) = sender.bind(&SockAddr::from(bind_addr)) {
+        return Err(std::io::Error::new(
+            e.kind(),
+            format!("{} : {}", e, bind_addr),
+        ));
+    };
     sender.set_nonblocking(true).unwrap();
     sender.set_recv_buffer_size(recv_buff_size)?;
     sender.set_send_buffer_size(send_buff_size)?;
@@ -244,7 +249,7 @@ impl SendRequest {
 
 pub fn generate_sender_thread(
     stop_broadcast_sender: tokio::sync::broadcast::Sender<()>,
-    send_buff_size:usize,
+    send_buff_size: usize,
 ) -> Result<tokio::sync::mpsc::Sender<SendRequest>, std::io::Error> {
     let (tx, mut rx) = tokio::sync::mpsc::channel::<SendRequest>(2048);
     let socket = generate_socket("0.0.0.0:0".parse().unwrap(), 1024, send_buff_size)?;

@@ -13,7 +13,7 @@
         <a-col :flex="auto">
           <p />
           <a-typography-title :level="3" :style="{ color: '#fff' }">
-            DataDistributor-V1.0.0.1
+            {{ this.title }}
           </a-typography-title>
         </a-col>
         <a-col flex="1 1 auto"> </a-col>
@@ -35,12 +35,7 @@
             ></a-col
           >
           <a-col
-            ><a-button
-              type="primary"
-              @click="
-                stop_start(0);
-                start_save();
-              "
+            ><a-button type="primary" @click="stop_start_save()"
               >START_SAVE</a-button
             ></a-col
           >
@@ -55,56 +50,62 @@
         //background: 'rgba(255,255,255,0.2)',
       }"
     >
-      <a-layout-sider
-        :style="{
-          background: '#fff',
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-        }"
-      >
-        <div class="logo" />
-        <a-menu
-          theme="light"
-          mode="inline"
-          @click="add"
-          @select="select_proc"
-          v-model:selectedKeys="selectedKeys"
-          v-model:openKeys="openKeys"
-          style="height: 100vh"
-        >
-          <a-menu-item
-            v-for="(set, set_index) in this.group.vec"
-            :key="set_index"
-          >
-            <ClusterOutlined />
-            <span class="nav-text">{{ set.name }}</span>
-          </a-menu-item>
-
-          <a-menu-item key="add">
-            <AppstoreAddOutlined />
-            <span class="nav-text">ADD</span>
-          </a-menu-item>
-          <a-menu-item key="help">
-            <QuestionCircleOutlined />
-            <span class="nav-text">HELP</span>
-          </a-menu-item>
-        </a-menu>
-      </a-layout-sider>
-      <a-layout :style="{ marginLeft: '200px' }">
-        <a-layout-content
+      <a-layout>
+        <a-layout-sider
           :style="{
-            margin: '24px 0px 0',
+            zIndex: 2,
+            background: '#fff',
             overflow: 'auto',
-            //height: '100vh',
-            //background: 'rgba(255,255,255,0.2)',
+            height: '100vh',
+            position: 'fixed',
+            left: 0,
           }"
+          breakpoint="lg"
+          collapsed-width="80"
+          @breakpoint="onBreakpoint"
         >
-          <template v-if="this.selectedKeys[0] == 'add'"> </template>
-          <template v-else-if="this.selectedKeys[0] == 'help'"> </template>
-          <set-ui v-else :set_key="this.selectedKeys[0]"></set-ui>
-        </a-layout-content>
+          <div class="logo" />
+          <a-menu
+            theme="light"
+            mode="inline"
+            @click="add"
+            @select="select_proc"
+            v-model:selectedKeys="selectedKeys"
+            v-model:openKeys="openKeys"
+            style="height: 100vh"
+          >
+            <a-menu-item
+              v-for="(set, set_index) in this.group.vec"
+              :key="set_index"
+            >
+              <ClusterOutlined />
+              <span class="nav-text">{{ set.name }}</span>
+            </a-menu-item>
+
+            <a-menu-item key="add">
+              <AppstoreAddOutlined />
+              <span class="nav-text">ADD</span>
+            </a-menu-item>
+            <a-menu-item key="help">
+              <QuestionCircleOutlined />
+              <span class="nav-text">HELP</span>
+            </a-menu-item>
+          </a-menu>
+        </a-layout-sider>
+        <a-layout :style="{ marginLeft: this.main_content_margin_left }">
+          <a-layout-content
+            :style="{
+              margin: '24px 0px 0',
+              overflow: 'auto',
+              //height: '100vh',
+              //background: 'rgba(255,255,255,0.2)',
+            }"
+          >
+            <template v-if="this.selectedKeys[0] == 'add'"> </template>
+            <template v-else-if="this.selectedKeys[0] == 'help'"> </template>
+            <set-ui v-else :set_key="this.selectedKeys[0]"></set-ui>
+          </a-layout-content>
+        </a-layout>
       </a-layout>
     </a-layout-content>
   </a-layout>
@@ -115,6 +116,7 @@ import {
   ClusterOutlined,
   QuestionCircleOutlined,
 } from "@ant-design/icons-vue";
+import { message } from "ant-design-vue";
 import { defineComponent, ref } from "vue";
 import SetUI from "./components/SetUI.vue";
 import axios from "axios";
@@ -277,9 +279,26 @@ export default defineComponent({
       speed_show_mode: false,
       group: { vec: [] },
       host_group: { vec: [] },
+      title: "DataDistributor-V1.0.0.1",
+      main_content_margin_left: "200px",
     };
   },
   methods: {
+    // onCollapse(collapsed, type) {
+    //   console.log(collapsed, type);
+    // },
+    onBreakpoint(broken) {
+      if (broken) {
+        this.title = "";
+        this.main_content_margin_left = "80px";
+      } else {
+        this.title = "DataDistributor-V1.0.0.1";
+        this.main_content_margin_left = "200px";
+      }
+
+      //console.log(broken);
+    },
+
     add(e) {
       console.log(e);
       if (e.key == "add") {
@@ -317,7 +336,7 @@ export default defineComponent({
         o = "start";
       }
       axios.post("/api/ctrl/" + o, {}).then((response) => {
-        console.log(response);
+        message.info(response.data);
       });
     },
 
@@ -329,9 +348,19 @@ export default defineComponent({
           vec: this.group.vec,
         })
         .then((response) => {
-          console.log(response);
+          message.info(response.data);
+          // if(response.data == 'start & save success')
           this.host_group = JSON.parse(JSON.stringify(this.group));
         });
+    },
+
+    stop_start_save() {
+      axios.post("/api/ctrl/stop", {}).then((response) => {
+        message.info(response.data);
+        if (response.data == "stop success" || response.data == "has stopped") {
+          this.start_save();
+        }
+      });
     },
 
     get_speed_show(speed, pkg_speed, flag) {

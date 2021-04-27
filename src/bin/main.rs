@@ -89,7 +89,7 @@ async fn main() {
 
             //stop_sender.send(());
         }
-        Err(e) => {}
+        Err(e) => warn!("{}", e),
     }
 
     crate::server::run(cmd.server, msg_rx, stop_trigger.clone()).await;

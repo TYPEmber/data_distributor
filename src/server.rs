@@ -91,14 +91,15 @@ pub async fn run(
                         println!("{}", stop_tx_m.receiver_count());
                         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                         if try_count > 10 {
-                            return Err(warp::reject::not_found());
+                            return Ok("stop failed");
                         }
                     }
 
-                    Ok("stop success!".to_string())
+                    return Ok("stop success");
                 } else {
-                    Err(warp::reject::not_found())
+                    return Ok("has stopped");
                 }
+                Err(warp::reject::not_found())
             }
         });
 
@@ -111,7 +112,7 @@ pub async fn run(
             if stop_tx_m.receiver_count() > 1 {
                 Response::builder()
                     .status(StatusCode::BAD_REQUEST)
-                    .body("RUNNING!")
+                    .body("RUNNING!".to_owned())
             } else {
                 if let Ok(group) = crate::params::Group::load("params.json") {
                     let dis_vec = group.get_flat_enable();
@@ -120,12 +121,14 @@ pub async fn run(
                             tokio::spawn(async move {
                                 crate::run(dis_vec, sender_map).await;
                             });
-                            warp::http::Response::builder().body("start")
+                            warp::http::Response::builder().body("start".to_owned())
                         }
-                        Err(e) => warp::http::Response::builder().body("start failed"),
+                        Err(e) => {
+                            warp::http::Response::builder().body(format!("{}", e))
+                        }
                     }
                 } else {
-                    warp::http::Response::builder().body("save failed")
+                    warp::http::Response::builder().body("save failed".to_owned())
                 }
             }
         });
@@ -147,15 +150,15 @@ pub async fn run(
                             tokio::spawn(async move {
                                 crate::run(dis_vec, sender_map).await;
                             });
-                            warp::http::Response::builder().body("start")
+                            warp::http::Response::builder().body("start success".to_owned())
                         } else {
-                            warp::http::Response::builder().body("save failed")
+                            warp::http::Response::builder().body("save failed".to_owned())
                         }
                     } else {
-                        warp::http::Response::builder().body("serialize failed")
+                        warp::http::Response::builder().body("serialize failed".to_owned())
                     }
                 }
-                Err(e) => warp::http::Response::builder().body("start failed"),
+                Err(e) => warp::http::Response::builder().body(format!("{}", e)),
             }
         });
 
@@ -167,10 +170,10 @@ pub async fn run(
             map_1
                 .lock()
                 .unwrap()
-                .get(&"GROUP".to_string())
+                .get("GROUP".into())
                 // unprepared
-                .unwrap_or(&"".to_string())
-                .to_string()
+                .unwrap_or(&String::default())
+                .to_owned()
         });
 
     let get_speed = warp::post()
@@ -195,7 +198,7 @@ pub async fn run(
                 .header("content-type", "text/html; charset=utf-8")
                 .header("cache-control", "no-cache")
                 .header("x-content-type-options", "nosniff")
-                .body((serde_json::to_string(&res).unwrap()))
+                .body(serde_json::to_string(&res).unwrap())
         });
 
     warp::serve(
