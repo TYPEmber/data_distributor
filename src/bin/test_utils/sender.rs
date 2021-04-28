@@ -10,33 +10,33 @@ use tokio::time::{sleep, Duration};
 
 #[derive(StructOpt, Debug)]
 pub struct Opt {
-    #[structopt(short, long, default_value = "4096")]
+    #[structopt(long, default_value = "4096")]
     recv_buffer: usize,
-    #[structopt(long, default_value = "4194304")]
+    #[structopt(default_value = "4194304")]
     send_buffer: usize,
-    #[structopt(short, long, default_value = "1000000000.0")]
+    #[structopt( long, default_value = "1000000000.0")]
     speed_rate: f64,
-    #[structopt(short, long, default_value = "2000000")]
+    #[structopt(long, default_value = "500000")]
     package_count: u32,
-    #[structopt(short, long, default_value = "1350")]
+    #[structopt( long, default_value = "1350")]
     buffer_length: usize,
-    #[structopt(long, default_value = "127.0.0.1:19209")]
+    #[structopt(default_value = "127.0.0.1:19209")]
     direct_addr: String,
-    #[structopt(short, long, default_value = "127.0.0.1:19211")]
+    #[structopt(long, default_value = "127.0.0.1:19211")]
     tcp_addr: String,
-    #[structopt(short, long, default_value = "127.0.0.1:19212")]
+    #[structopt( long, default_value = "127.0.0.1:19212")]
     tcp_addr_stop: String,
-    #[structopt(short, long, default_value = "127.0.0.1:19850")]
+    #[structopt( long, default_value = "127.0.0.1:19850")]
     tcp_addr_stop_2nd: String,
-    #[structopt(short, long, default_value = "127.0.0.1:5503")]
+    #[structopt( long, default_value = "127.0.0.1:5503")]
     distributor_addr: String,
-    #[structopt(short, long, default_value = "80000.0")]
+    #[structopt( long, default_value = "80000.0")]
     package_rate: f64,
     #[structopt(long)]
     pps_enable: bool,
     #[structopt(long)]
     time_limit_enable: bool,
-    #[structopt(short, long, default_value = "30.0")]
+    #[structopt(long, default_value = "30.0")]
     time_duration: f64,
 }
 
