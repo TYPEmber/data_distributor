@@ -6,7 +6,7 @@ use warp::{
     http::{Response, StatusCode},
     Filter,
 };
-
+use dashmap::mapref::one::Ref;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct SpeedRequest {
     vec: Vec<String>,
@@ -184,13 +184,16 @@ pub async fn run(
         .and(warp::path("group"))
         .and(warp::path("get"))
         .map(move || {
-            map_1
+           match map_1
                // .lock()
                // .unwrap()
-                .get("GROUP".into())
+                .get("GROUP".into()){
+                    Some(n) =>{n.value().to_string()},
+                    None => {String::default()}
+                }
                 // unprepared
-                .unwrap()
-                .to_owned()
+                
+                
         });
 
 
@@ -206,10 +209,10 @@ pub async fn run(
                 .vec
                 .iter()
                 .map(|addr| {
-                    map_0
-                        .get(addr)
-                        .unwrap()
-                        .to_string()
+                    match map_0.get(addr) {
+                     Some(n) =>{n.value().to_string()},
+                     None => {"0.0".to_string()}   
+                    }
                 })
                 .collect();
             warp::http::Response::builder()
