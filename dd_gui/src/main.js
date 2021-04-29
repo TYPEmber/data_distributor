@@ -1,6 +1,6 @@
 import {createApp} from 'vue'
 
-import { Layout, Menu, Space, Row, Col, Divider, Input, Switch, Button, Collapse, Message, Typography } from "ant-design-vue";
+import { Layout, Menu, Space, Row, Col, Divider, Input, Switch, Button, Collapse, Message, Typography, Popconfirm } from "ant-design-vue";
 
 import App from './App.vue'
 
@@ -17,6 +17,7 @@ createApp(App)
     .use(Collapse)
     .use(Message)
     .use(Typography)
+    .use(Popconfirm)
     .mount('#app')
     
 
