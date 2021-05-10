@@ -55,18 +55,14 @@ pub async fn run(
                                     speed.push_str(" ");
                                     speed.push_str(pkg_speed);
                                     map.insert(in_out, speed);
-                                    // map.lock().unwrap().insert(in_out, speed);
                                 }
                                 "GROUP" => {
-                                    //println!("{} {}",s.find("GROUP").unwrap(), s[s.find("GROUP").unwrap() + 5 + 1..].to_string());
                                     let json = s[s.find(v).unwrap() + v.len() + 1..].to_owned();
                                     map.insert(v.to_owned(), json);
-                                    //map.lock().unwrap().insert(v.to_owned(), json);
                                 }
                                 "CLOSED" => loop {
                                     if let Some(addr) = res.next() {
                                         map.remove(addr);
-                                    //    map.lock().unwrap().remove(addr);
                                     } else {
                                         break;
                                     }
@@ -81,10 +77,7 @@ pub async fn run(
         }
     });
 
-    //println!("{:?}",  std::env::current_dir().unwrap_or_default());
-
     let main_page = warp::get().and(warp::fs::dir("dd_gui/dist/"));
-    //let main_page = warp::get().and(warp::fs::file("ui.html"));
 
     let stop_tx_m = stop_tx.clone();
     let stop = warp::post()
@@ -187,8 +180,6 @@ pub async fn run(
         .and(warp::path("get"))
         .and(warp::body::json())
         .map(move |p: SpeedRequest| {
-            //println!("asdfadfadsf {:?}", p);
-            // let map_locked = map_0.lock().unwrap();
             let res: Vec<String> = p
                 .vec
                 .iter()
@@ -206,7 +197,6 @@ pub async fn run(
 
     warp::serve(
         main_page
-            // .or(basic_get)
             .or(get_speed)
             .or(get_group)
             .or(stop)

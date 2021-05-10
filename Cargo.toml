@@ -14,6 +14,9 @@ path = "src/bin/test_utils/receiver.rs"
 name = "sender"
 path = "src/bin/test_utils/sender.rs"
 
+[build-dependencies]
+embed-resource = "1.5.1"
+
 [dependencies]
 tokio = { version = "*", features = ["full"]}
 socket2 = "*"
