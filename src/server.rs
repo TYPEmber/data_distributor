@@ -31,10 +31,6 @@ pub async fn run(
     mut msg_rx: tokio::sync::broadcast::Receiver<String>,
     stop_tx: tokio::sync::broadcast::Sender<()>,
 ) {
-    /* let map = Arc::new(std::sync::Mutex::new(std::collections::HashMap::<
-        String,
-        String,
-    >::new())); */
     let map = Arc::new(DashMap::<String, String>::new());
     let map_0 = map.clone();
     let map_1 = map.clone();

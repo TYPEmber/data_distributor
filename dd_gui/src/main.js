@@ -1,10 +1,23 @@
 import {createApp} from 'vue'
-import Antd from 'ant-design-vue';
-import 'ant-design-vue/dist/antd.css';
+
+import { Layout, Menu, Space, Row, Col, Divider, Input, Switch, Button, Collapse, Message, Typography, Popconfirm } from "ant-design-vue";
+
 import App from './App.vue'
 
 createApp(App)
-    .use(Antd) 
+    .use(Layout)
+    .use(Menu)
+    .use(Space)
+    .use(Row)
+    .use(Col)
+    .use(Divider)
+    .use(Input)
+    .use(Switch)
+    .use(Button)
+    .use(Collapse)
+    .use(Message)
+    .use(Typography)
+    .use(Popconfirm)
     .mount('#app')
     
 
