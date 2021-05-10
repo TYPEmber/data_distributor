@@ -1,18 +1,18 @@
+use dashmap::mapref::one::Ref;
+use dashmap::DashMap;
 use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use dashmap::DashMap;
 use warp::{
     http::{Response, StatusCode},
     Filter,
 };
-use dashmap::mapref::one::Ref;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct SpeedRequest {
     vec: Vec<String>,
 }
 /// 运行服务器端线程
-/// 
+///
 /// 该服务器端线程，主要实现了五个类别的HTTP请求响应。
 /// # start
 /// 在Web客户端启动程序。如果软件在之前已经启动，会反馈一个running信息，
@@ -24,21 +24,20 @@ struct SpeedRequest {
 /// 客户端发送stop的HTTP请求后，软件会停止运行。
 /// # get_speed
 /// 收到该HTTP请求，会在HTTP响应中包含数据包的接收，发送速率
-/// # get_group 
+/// # get_group
 /// 收到该HTTP请求，会在响应中包含当前软件运行的配置信息
 pub async fn run(
     listen_port: u16,
     mut msg_rx: tokio::sync::broadcast::Receiver<String>,
     stop_tx: tokio::sync::broadcast::Sender<()>,
 ) {
-   /* let map = Arc::new(std::sync::Mutex::new(std::collections::HashMap::<
+    /* let map = Arc::new(std::sync::Mutex::new(std::collections::HashMap::<
         String,
         String,
     >::new())); */
-    let map =Arc::new(DashMap::<String, String>::new());
+    let map = Arc::new(DashMap::<String, String>::new());
     let map_0 = map.clone();
     let map_1 = map.clone();
-    let map_2 = map.clone();
 
     tokio::spawn(async move {
         loop {
@@ -59,19 +58,15 @@ pub async fn run(
                                     let pkg_speed = res.next().unwrap();
                                     speed.push_str(" ");
                                     speed.push_str(pkg_speed);
-                                    map.insert(in_out,speed);
-                                   // map.lock().unwrap().insert(in_out, speed);
+                                    map.insert(in_out, speed);
                                 }
                                 "GROUP" => {
-                                    //println!("{} {}",s.find("GROUP").unwrap(), s[s.find("GROUP").unwrap() + 5 + 1..].to_string());
                                     let json = s[s.find(v).unwrap() + v.len() + 1..].to_owned();
-                                      map.insert(v.to_owned(),json);
-                                     //map.lock().unwrap().insert(v.to_owned(), json);
+                                    map.insert(v.to_owned(), json);
                                 }
                                 "CLOSED" => loop {
                                     if let Some(addr) = res.next() {
-                                       map.remove(addr);
-                                    //    map.lock().unwrap().remove(addr);
+                                        map.remove(addr);
                                     } else {
                                         break;
                                     }
@@ -86,10 +81,7 @@ pub async fn run(
         }
     });
 
-    //println!("{:?}",  std::env::current_dir().unwrap_or_default());
-
     let main_page = warp::get().and(warp::fs::dir("dd_gui/dist/"));
-    //let main_page = warp::get().and(warp::fs::file("ui.html"));
 
     let stop_tx_m = stop_tx.clone();
     let stop = warp::post()
@@ -140,9 +132,7 @@ pub async fn run(
                             });
                             warp::http::Response::builder().body("start".to_owned())
                         }
-                        Err(e) => {
-                            warp::http::Response::builder().body(format!("{}", e))
-                        }
+                        Err(e) => warp::http::Response::builder().body(format!("{}", e)),
                     }
                 } else {
                     warp::http::Response::builder().body("save failed".to_owned())
@@ -179,40 +169,27 @@ pub async fn run(
             }
         });
 
-        let get_group = warp::post()
+    let get_group = warp::post()
         .and(warp::path("api"))
         .and(warp::path("group"))
         .and(warp::path("get"))
-        .map(move || {
-           match map_1
-               // .lock()
-               // .unwrap()
-                .get("GROUP".into()){
-                    Some(n) =>{n.value().to_string()},
-                    None => {String::default()}
-                }
-                // unprepared
-                
-                
+        .map(move || match map_1.get("GROUP".into()) {
+            Some(n) => n.value().to_string(),
+            None => String::default(),
         });
 
-
-        let get_speed = warp::post()
+    let get_speed = warp::post()
         .and(warp::path("api"))
         .and(warp::path("speed"))
         .and(warp::path("get"))
         .and(warp::body::json())
         .map(move |p: SpeedRequest| {
-            //println!("asdfadfadsf {:?}", p);
-           // let map_locked = map_0.lock().unwrap();
             let res: Vec<String> = p
                 .vec
                 .iter()
-                .map(|addr| {
-                    match map_0.get(addr) {
-                     Some(n) =>{n.value().to_string()},
-                     None => {"0.0".to_string()}   
-                    }
+                .map(|addr| match map_0.get(addr) {
+                    Some(n) => n.value().to_string(),
+                    None => "0.0".to_string(),
                 })
                 .collect();
             warp::http::Response::builder()
@@ -224,7 +201,6 @@ pub async fn run(
 
     warp::serve(
         main_page
-            // .or(basic_get)
             .or(get_speed)
             .or(get_group)
             .or(stop)

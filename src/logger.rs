@@ -41,19 +41,20 @@ impl log::Log for AsyncLogger {
                 .unwrap();
         }
     }
-   /// 刷新日志缓存
+    /// 刷新日志缓存
     fn flush(&self) {}
 }
 
 use log::{LevelFilter, SetLoggerError};
-
 
 lazy_static::lazy_static! {
     static ref LOGGER: AsyncLogger = AsyncLogger::new();
 }
 /// 初始化LOGGER实例，设置其要保存的日志信息级别
 pub fn init() {
-    log::set_logger(&*LOGGER).map(|()| log::set_max_level(LevelFilter::Info)).unwrap();
+    log::set_logger(&*LOGGER)
+        .map(|()| log::set_max_level(LevelFilter::Info))
+        .unwrap();
 }
 
 /// 该函数返回广播通道的接收端，用于接收日志信息

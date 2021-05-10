@@ -51,7 +51,7 @@ async fn send_tcp(stream: &TcpStream, buf: &[u8]) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-async fn recv_tcp_u32(stream: &TcpStream, buffer_length:usize) -> Result<u32, Box<dyn Error>> {
+async fn recv_tcp_u32(stream: &TcpStream, buffer_length: usize) -> Result<u32, Box<dyn Error>> {
     //let mut buf = [0; 5000];
     let mut buf = vec![0u8; buffer_length];
     loop {
@@ -67,9 +67,9 @@ async fn recv_tcp_u32(stream: &TcpStream, buffer_length:usize) -> Result<u32, Bo
     Ok(res)
 }
 
-async fn recv_tcp_f64(stream: &TcpStream,buffer_length:usize) -> Result<f64, Box<dyn Error>> {
-   // let mut buf = [0; 5000];
-   let mut buf = vec![0u8; buffer_length];
+async fn recv_tcp_f64(stream: &TcpStream, buffer_length: usize) -> Result<f64, Box<dyn Error>> {
+    // let mut buf = [0; 5000];
+    let mut buf = vec![0u8; buffer_length];
     loop {
         stream.readable().await?;
         match stream.try_read(&mut buf) {
@@ -135,7 +135,6 @@ async fn test_recv_packages(
     }).await.unwrap();
     result
 }
-
 
 async fn test_recv_packages_time_limt(
     time_limit: f64,
@@ -205,7 +204,7 @@ async fn main() {
         .parse::<std::net::SocketAddr>()
         .unwrap();
     // 进行数据包接收
-    if cmd.time_limit_enable{
+    if cmd.time_limit_enable {
         recv_pkg_time_limit(
             addr,
             addr1,
@@ -217,19 +216,19 @@ async fn main() {
             cmd.send_buffer,
         )
         .await;
-    }else{
-    recv_pkg(
-        addr,
-        addr1,
-        addr2,
-        addr3,
-        addr4,
-        cmd.buffer_length,
-        cmd.recv_buffer,
-        cmd.send_buffer,
-    )
-    .await;
-}
+    } else {
+        recv_pkg(
+            addr,
+            addr1,
+            addr2,
+            addr3,
+            addr4,
+            cmd.buffer_length,
+            cmd.recv_buffer,
+            cmd.send_buffer,
+        )
+        .await;
+    }
     loop {
         tokio::time::sleep(tokio::time::Duration::from_millis(1_000)).await;
     }
@@ -260,10 +259,14 @@ async fn recv_pkg(
     let mut buffer = vec![0u8; buffer_length];
 
     // 接收发包总数
-    let num_package = recv_tcp_u32(&stream_parameter,buffer_length).await.unwrap();
+    let num_package = recv_tcp_u32(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
 
     // 接收发送速率
-    let speed_rate = recv_tcp_f64(&stream_parameter,buffer_length).await.unwrap();
+    let speed_rate = recv_tcp_f64(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
 
     // 开始第一轮接收，sender直接发送UDP包到receiver
     let result =
@@ -278,24 +281,34 @@ async fn recv_pkg(
     }
 
     // 接收第一轮sender发包的总时间
-    let send_time_1 = recv_tcp_f64(&stream_parameter,buffer_length).await.unwrap();
+    let send_time_1 = recv_tcp_f64(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
     println!("the time is {:?}", send_time_1);
 
     // 开始第二轮接收数据包
     let result_2nd = test_recv_packages(num_package, buffer_length, socket, stream_stop_2nd).await;
 
     // 接收第二轮sender传输数据包的总时间
-    let send_time_2 = recv_tcp_f64(&stream_parameter,buffer_length).await.unwrap();
+    let send_time_2 = recv_tcp_f64(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
 
-    let calculate_num_1=(result.0/10000)*10000;
-    let calculate_duration_1=(calculate_num_1/num_package) as f64 * send_time_1;
-    
-    let calculate_num_2=(result_2nd.0/10000)*10000;
-    let calculate_duration_2=(calculate_num_2/num_package) as f64 * send_time_2;
+    let calculate_num_1 = (result.0 / 10000) * 10000;
+    let calculate_duration_1 = (calculate_num_1 / num_package) as f64 * send_time_1;
+
+    let calculate_num_2 = (result_2nd.0 / 10000) * 10000;
+    let calculate_duration_2 = (calculate_num_2 / num_package) as f64 * send_time_2;
 
     // 最后测试结果比较，打印
-    println!("the calculate_duration_1 is {} and the result_time_1 is {}",calculate_duration_1,result.2);
-    println!("the calculate_duration_2 is {} and the result_time_2 is {}",calculate_duration_2,result_2nd.2);
+    println!(
+        "the calculate_duration_1 is {} and the result_time_1 is {}",
+        calculate_duration_1, result.2
+    );
+    println!(
+        "the calculate_duration_2 is {} and the result_time_2 is {}",
+        calculate_duration_2, result_2nd.2
+    );
     println!("the speed rate is {}", speed_rate);
 
     println!(
@@ -317,7 +330,6 @@ async fn recv_pkg(
         (result_2nd.2 - calculate_duration_2) / result_2nd.0 as f64 * 1000.0
     );
 }
-    
 
 async fn recv_pkg_time_limit(
     direct_ip: std::net::SocketAddr,
@@ -344,14 +356,19 @@ async fn recv_pkg_time_limit(
     let mut buffer = vec![0u8; buffer_length];
 
     // 接收发包总时间
-    let time_duration = recv_tcp_f64(&stream_parameter,buffer_length).await.unwrap();
+    let time_duration = recv_tcp_f64(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
 
     // 接收发送速率
-    let speed_rate = recv_tcp_f64(&stream_parameter,buffer_length).await.unwrap();
+    let speed_rate = recv_tcp_f64(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
 
     // 开始第一轮接收，sender直接发送UDP包到receiver
     let result =
-        test_recv_packages_time_limt(time_duration, buffer_length, socket_parameter, stream_stop).await;
+        test_recv_packages_time_limt(time_duration, buffer_length, socket_parameter, stream_stop)
+            .await;
 
     let mut buffer = vec![0u8; buffer_length];
     // 通知发送端第一轮完成
@@ -362,32 +379,50 @@ async fn recv_pkg_time_limit(
     }
 
     // 接收第一轮sender发包总数量
-    let send_pkg_num_1 = recv_tcp_u32(&stream_parameter,buffer_length).await.unwrap();
+    let send_pkg_num_1 = recv_tcp_u32(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
     println!("the send pkg num is {:?}", send_pkg_num_1);
 
-    let send_pkg_duration_1=recv_tcp_f64(&stream_parameter,buffer_length).await.unwrap();
+    let send_pkg_duration_1 = recv_tcp_f64(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
     println!("the send pkg time is {:?}", send_pkg_duration_1);
 
     // 开始第二轮接收数据包
-    let result_2nd = test_recv_packages_time_limt(time_duration, buffer_length, socket, stream_stop_2nd).await;
+    let result_2nd =
+        test_recv_packages_time_limt(time_duration, buffer_length, socket, stream_stop_2nd).await;
 
     // 接收第二轮sender传输数据包的总时间
-    let send_pkg_num_2 = recv_tcp_u32(&stream_parameter,buffer_length).await.unwrap();
-    let send_pkg_duration_2=recv_tcp_f64(&stream_parameter,buffer_length).await.unwrap();
+    let send_pkg_num_2 = recv_tcp_u32(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
+    let send_pkg_duration_2 = recv_tcp_f64(&stream_parameter, buffer_length)
+        .await
+        .unwrap();
     println!("the send pkg time is {:?}", send_pkg_duration_2);
-    
-    let calculate_num_1=(result.0/10000)*10000; 
-    let calculate_duration_1=(calculate_num_1/send_pkg_num_1) as f64 * send_pkg_duration_1;
-    
-    let calculate_num_2=(result_2nd.0/10000)*10000;
-    let calculate_duration_2=(calculate_num_2/send_pkg_num_2) as f64 * send_pkg_duration_2;
+
+    let calculate_num_1 = (result.0 / 10000) * 10000;
+    let calculate_duration_1 = (calculate_num_1 / send_pkg_num_1) as f64 * send_pkg_duration_1;
+
+    let calculate_num_2 = (result_2nd.0 / 10000) * 10000;
+    let calculate_duration_2 = (calculate_num_2 / send_pkg_num_2) as f64 * send_pkg_duration_2;
     // 最后测试结果比较，打印
-    println!("the calculate_duration_1 is {} and the result_time_1 is {}",calculate_duration_1,result.2);
-    println!("the calculate_duration_2 is {} and the result_time_2 is {}",calculate_duration_2,result_2nd.2);
-    println!("the speed rate is {} and the setting time_limit_duration is {}", speed_rate,time_duration);
+    println!(
+        "the calculate_duration_1 is {} and the result_time_1 is {}",
+        calculate_duration_1, result.2
+    );
+    println!(
+        "the calculate_duration_2 is {} and the result_time_2 is {}",
+        calculate_duration_2, result_2nd.2
+    );
+    println!(
+        "the speed rate is {} and the setting time_limit_duration is {}",
+        speed_rate, time_duration
+    );
     println!(
         "1st round test: the sending packages are {}, receiving packages are {} and the losing packages rate is {:?}",
-        send_pkg_num_1,result.0, ((send_pkg_num_1 as f64-result.0 as f64) /send_pkg_num_1 as f64) 
+        send_pkg_num_1,result.0, ((send_pkg_num_1 as f64-result.0 as f64) /send_pkg_num_1 as f64)
     );
     println!(
         "1st round test: the num out of order is {:?} and delay is {:?} ms",
@@ -396,7 +431,7 @@ async fn recv_pkg_time_limit(
     );
     println!(
         "2nd round test: the sending packages are {},receiving packages are {} and the losing packages rate is {:?}",
-        send_pkg_num_2,result_2nd.0, ((send_pkg_num_2 as f64-result_2nd.0 as f64) /send_pkg_num_2 as f64) 
+        send_pkg_num_2,result_2nd.0, ((send_pkg_num_2 as f64-result_2nd.0 as f64) /send_pkg_num_2 as f64)
     );
     println!(
         "2nd round test: the num out of order is {:?} and delay is {:?} ms",

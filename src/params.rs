@@ -222,7 +222,7 @@ pub struct Group {
 }
 impl Group {
     ///该函数用于从 Group 中获取初始化 lib.rs 的所有所需信息
-    /// 
+    ///
     /// 返回标记为 enable 的所有 Sets 中的所有 Distributor
     /// 其中每个 Distributor 对应的 Vec 中只包含该 Distributor 中 enable 的 remote_addr
     pub fn get_flat_enable(&self) -> Vec<(usize, std::net::SocketAddr, Vec<std::net::SocketAddr>)> {
@@ -245,7 +245,7 @@ impl Group {
             })
             .collect()
     }
-   ///该函数用于将软件运行的配置信息，转换成一个Group实例
+    ///该函数用于将软件运行的配置信息，转换成一个Group实例
     pub fn from_flat_enable(
         flat: &Vec<(usize, std::net::SocketAddr, Vec<std::net::SocketAddr>)>,
         send_buffer: usize,
@@ -259,17 +259,19 @@ impl Group {
                 vec: flat
                     .iter()
                     .enumerate()
-                    .map(|(index, (recv_buffer, local_addr, remote_addrs))| Distributor {
-                        name: "dis_".to_string() + &index.to_string(),
-                        note: "no comment".to_string(),
-                        enable: true,
-                        recv_buffer: *recv_buffer,
-                        local_addr: *local_addr,
-                        remote_addrs: remote_addrs
-                            .iter()
-                            .map(|addr| Remote::new(*addr, "no comment".to_string(), true))
-                            .collect(),
-                    })
+                    .map(
+                        |(index, (recv_buffer, local_addr, remote_addrs))| Distributor {
+                            name: "dis_".to_string() + &index.to_string(),
+                            note: "no comment".to_string(),
+                            enable: true,
+                            recv_buffer: *recv_buffer,
+                            local_addr: *local_addr,
+                            remote_addrs: remote_addrs
+                                .iter()
+                                .map(|addr| Remote::new(*addr, "no comment".to_string(), true))
+                                .collect(),
+                        },
+                    )
                     .collect(),
             }],
         }
@@ -278,12 +280,12 @@ impl Group {
     pub fn get_json(&self) -> Result<String, std::io::Error> {
         Ok(serde_json::to_string(self)?)
     }
-   /// 将Group里面的配置信息，保存为json文件
+    /// 将Group里面的配置信息，保存为json文件
     pub fn save(&self, path: &str) -> Result<(), std::io::Error> {
         serde_json::to_writer(std::io::BufWriter::new(std::fs::File::create(path)?), self)?;
         Ok(())
     }
-   ///载入json格式的配置文件，生成一个Group实例，作为软件运行时的参数信息
+    ///载入json格式的配置文件，生成一个Group实例，作为软件运行时的参数信息
     pub fn load(path: &str) -> Result<Self, std::io::Error> {
         Ok(serde_json::from_reader(std::io::BufReader::new(
             std::fs::File::open(path)?,

@@ -33,6 +33,10 @@ impl std::str::FromStr for Pair {
     }
 }
 
+
+
+
+
 #[derive(StructOpt, Debug)]
 struct Opt {
     #[structopt(short, long, default_value = "1048576")]
@@ -46,7 +50,9 @@ struct Opt {
     #[structopt(long, default_value = "8080")]
     server: u16,
     #[structopt(long)]
-    para: Option<String>,
+    load_disable: bool,
+    #[structopt(long, default_value="./params.json")]
+    para: String,
 }
 
 // cargo run --bin main --release -- -a "127.0.0.1:5503 -> 127.0.0.1:19208 127.0.0.1:19210" -a "127.0.0.1:5504 -> 127.0.0.1:19211 127.0.0.1:19212"
@@ -59,8 +65,8 @@ async fn main() {
     let recv_buffer = cmd.recv_buffer;
     let send_buffer = cmd.send_buffer;
 
-    let (dis_vec, group) = if let Some(para_path) = cmd.para {
-        let group = params::Group::load(&para_path[..]).unwrap();
+    let (dis_vec, group) = if let false = cmd.load_disable {
+        let group = params::Group::load(&cmd.para[..]).unwrap();
 
         (group.get_flat_enable(), group)
     } else {

@@ -1,4 +1,3 @@
-
 use socket2::{Domain, SockAddr, Socket, Type};
 
 use log::{debug, error, info, trace, warn};
@@ -12,7 +11,7 @@ mod tests {
     fn it_works() {}
 }
 ///日志管理模块
-/// 
+///
 pub mod logger;
 ///配置文件模块
 pub mod params;
@@ -221,7 +220,7 @@ impl Distributor {
     }
 }
 /// 生成一个sender_map，为一个包含Remote_addr和对应网卡发送线程的MPSC发送端的HashMap。
-/// 
+///
 ///该函数会为当前软件运行时，配置参数里的每一个Remote_addr, 都绑定到其中一个
 /// 网卡发送线程。在绑定以后，所有发往该Remote_addr的数据包，都会通过该网卡发
 /// 送线程进行发送。
@@ -252,7 +251,7 @@ pub fn generate_sender_map(
         }
     }
 
-    //println!("{:?}", local_ips);
+    
 
     Ok(Arc::new(map))
 }
@@ -272,7 +271,7 @@ pub struct RemoteInfo {
     pub pkg_speed_acc: AtomicUsize,
 }
 /// 该结构体包含网卡发送线程发送到remote_addr所需要的全部信息。
-/// 
+///
 /// data是一个u8数组，为收到的数据包数据。
 /// remote是一个RemoteInfo数据类型。
 pub struct SendRequest {
@@ -289,7 +288,7 @@ impl SendRequest {
 }
 
 /// 该函数生成一个网卡发送线程。
-/// 
+///
 /// MPSC通道最大队列数量被设置为2048，当缓存数量溢出时，则会产生丢包行为，
 /// 来减少因为缓存过大，而导致的UDP包分发延时过大。
 pub fn generate_sender_thread(
